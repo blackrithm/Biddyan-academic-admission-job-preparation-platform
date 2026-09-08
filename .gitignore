@@ -1,0 +1,24 @@
+# Flutter and Dart generated files
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+
+# Android and IDE generated files
+frontend/.idea/
+frontend/*.iml
+frontend/android/.gradle/
+frontend/android/local.properties
+
+# iOS generated files
+frontend/ios/Flutter/ephemeral/
+
+# Node.js generated files
+backend/node_modules/
+backend/dist/
+
+# Local environment and logs
+.env
+.env.*
+*.log

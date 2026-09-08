@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: biddyan-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: biddyan
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - biddyan-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: biddyan-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - biddyan-network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: biddyan-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgrespassword
+      - DB_NAME=biddyan
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=biddyan_jwt_secret_high_entropy_2026_super_key
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - biddyan-network
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  biddyan-network:
+    driver: bridge
