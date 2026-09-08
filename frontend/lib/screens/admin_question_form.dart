@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,6 +26,7 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
   final _dCtrl = TextEditingController();
   final _explanationCtrl = TextEditingController();
   final _tagCtrl = TextEditingController();
+  final _bulkJsonCtrl = TextEditingController();
 
   String? _topicId;
   String _correctOption = 'A';
@@ -53,6 +56,7 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
     _dCtrl.dispose();
     _explanationCtrl.dispose();
     _tagCtrl.dispose();
+    _bulkJsonCtrl.dispose();
     super.dispose();
   }
 
@@ -116,6 +120,11 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                       ],
                       onChanged: (value) => setState(() => _topicId = value),
                     ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'এই বিভাগটি একবার নির্বাচন করলে নিচের সব প্রশ্নে প্রয়োগ হবে।',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _textCtrl,
@@ -142,6 +151,42 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                         labelText: 'ব্যাখ্যা (Explanation)',
                         hintText: 'সঠিক উত্তরের বিস্তারিত ব্যাখ্যা...',
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Bulk JSON import',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'একই নির্বাচিত বিভাগে একসাথে একাধিক MCQ যোগ করুন।',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _bulkJsonCtrl,
+                      minLines: 4,
+                      maxLines: 8,
+                      decoration: const InputDecoration(
+                        hintText:
+                            '[{"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"A","explanation":"..."}]',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: _bulkImport,
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('JSON থেকে সংরক্ষণ করুন'),
                     ),
                   ],
                 ),
@@ -230,6 +275,40 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
       setState(() => _error = e.toString());
     } finally {
       setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _bulkImport() async {
+      if (_topicId == null) {
+        setState(() => _error = 'প্রথমে বিভাগ নির্বাচন করুন');
+        return;
+      }
+      try {
+        final decoded = jsonDecode(_bulkJsonCtrl.text);
+        if (decoded is! List) {
+          throw const FormatException('JSON array দিন');
+        }
+        setState(() {
+          _saving = true;
+          _error = null;
+          _success = null;
+        });
+        for (final item in decoded) {
+          if (item is! Map) {
+            throw const FormatException('প্রতিটি item JSON object হতে হবে');
+          }
+          final question = Map<String, dynamic>.from(item);
+          question['topic_id'] = _topicId;
+          await QuestionService(apiClient).create(question);
+        }
+        setState(() {
+          _bulkJsonCtrl.clear();
+          _success = '${decoded.length}টি প্রশ্ন সফলভাবে সংরক্ষিত হয়েছে';
+        });
+      } catch (e) {
+        setState(() => _error = 'Bulk import ব্যর্থ: $e');
+      } finally {
+        if (mounted) setState(() => _saving = false);
     }
   }
 }

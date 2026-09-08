@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'admin_question_form.dart';
+import 'admin_exam_form.dart';
 import 'admin_topics.dart';
+import '../widgets/brand_navigation.dart';
 
 /// Admin Panel (Flutter Web).
 ///
@@ -29,6 +31,10 @@ class AdminScreen extends ConsumerWidget {
         ],
       ),
       body: const _TabbedAdmin(),
+      bottomNavigationBar: BrandBottomNavigation(
+        selectedIndex: 4,
+        onSelected: (_) {},
+      ),
     );
   }
 }
@@ -65,6 +71,11 @@ class _TabbedAdminState extends ConsumerState<_TabbedAdmin> {
                 icon: Icon(Icons.quiz),
                 label: Text('প্রশ্ন যোগ করুন'),
               ),
+              ButtonSegment(
+                value: 2,
+                icon: Icon(Icons.event),
+                label: Text('পরীক্ষা তৈরি'),
+              ),
             ],
             selected: {_section},
             onSelectionChanged: (selection) =>
@@ -75,7 +86,9 @@ class _TabbedAdminState extends ConsumerState<_TabbedAdmin> {
           child: topics.when(
             data: (rows) => _section == 0
                 ? TopicsPanel(topics: rows, notifier: notifier)
-                : AdminQuestionForm(topics: rows),
+                : _section == 1
+                    ? AdminQuestionForm(topics: rows)
+                    : AdminExamForm(topics: rows),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => _ErrorCard(message: error.toString()),
           ),

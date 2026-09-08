@@ -2,23 +2,19 @@ import '../models/models.dart';
 
 class MockData {
   static final List<TopicNode> topicTree = [
-    TopicNode(
-      id: 't1', name: 'বাংলা',
-      children: [
-        TopicNode(id: 't2', name: 'সাহিত্য্য', children: [
-          TopicNode(id: 't3', name: 'চরমাকাশ'),
-          TopicNode(id: 't4', name: 'কালভর্ণ'),
-        ]),
-        TopicNode(id: 't5', name: 'ভাষাতত্ত্ব'),
-      ],
-    ),
-    TopicNode(id: 't6', name: 'ইংরেজি', children: [
-      TopicNode(id: 't7', name: 'গ্রামার'),
-      TopicNode(id: 't8', name: 'রিডিং'),
+    TopicNode(id: 'academic', name: 'Academic', children: [
+      TopicNode(id: 't3', name: 'SSC'),
+      TopicNode(id: 't4', name: 'HSC'),
     ]),
-    TopicNode(id: 't9', name: 'গণিত', children: [
-      TopicNode(id: 'ta', name: 'সংখ্যাবলী'),
-      TopicNode(id: 'tb', name: 'বীজগণিত'),
+    TopicNode(id: 'admission', name: 'Admission', children: [
+      TopicNode(id: 't8', name: 'Varsity'),
+      TopicNode(id: 'ta', name: 'Engineering'),
+      TopicNode(id: 'tb', name: 'Medical'),
+      TopicNode(id: 't7', name: 'Agriculture'),
+    ]),
+    TopicNode(id: 'job', name: 'Job', children: [
+      TopicNode(id: 't5', name: 'BCS'),
+      TopicNode(id: 't6', name: 'Bank'),
     ]),
   ];
 

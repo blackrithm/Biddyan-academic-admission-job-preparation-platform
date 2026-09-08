@@ -20,6 +20,27 @@ CREATE TABLE topics (
 -- B-Tree index for quick resolution of subtopic listings
 CREATE INDEX idx_topics_parent_id ON topics(parent_id);
 
+-- Default Biddyan taxonomy: one main category is selected before its
+-- sub-categories and questions are assigned.
+INSERT INTO topics (name) VALUES
+    ('Academic'),
+    ('Admission'),
+    ('Job');
+
+INSERT INTO topics (name, parent_id)
+SELECT child.name, parent.id
+FROM (VALUES
+    ('SSC', 'Academic'),
+    ('HSC', 'Academic'),
+    ('Varsity', 'Admission'),
+    ('Engineering', 'Admission'),
+    ('Medical', 'Admission'),
+    ('Agriculture', 'Admission'),
+    ('BCS', 'Job'),
+    ('Bank', 'Job')
+) AS child(name, parent_name)
+JOIN topics parent ON parent.name = child.parent_name AND parent.parent_id IS NULL;
+
 -- 2. Questions Table
 CREATE TABLE questions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

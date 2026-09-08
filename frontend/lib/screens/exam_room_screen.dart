@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../providers/providers.dart';
+import '../widgets/brand_navigation.dart';
 import 'exam_room_widgets.dart';
 
 /// Live Exam Room.
@@ -70,6 +71,10 @@ class _ExamRoomScreenState extends ConsumerState<ExamRoomScreen> {
               child: _ExamBody(session: session, notifier: notifier),
             ),
         ],
+      ),
+      bottomNavigationBar: BrandBottomNavigation(
+        selectedIndex: 2,
+        onSelected: (_) {},
       ),
     );
   }

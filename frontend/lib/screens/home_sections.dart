@@ -12,28 +12,34 @@ class StudySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        for (final item
-            in const <({String title, String subtitle, IconData icon})>[
-          (title: 'বাংলা', subtitle: 'ব্যাকরণ ও সাহিত্য', icon: Icons.auto_stories),
-          (title: 'ইংরেজি', subtitle: 'গ্রামার ও ভোকাবুলারি', icon: Icons.language),
-          (title: 'গণিত', subtitle: 'পাটিগণিত থেকে জ্যামিতি', icon: Icons.calculate),
-          (title: 'সাধারণ জ্ঞান', subtitle: 'বাংলাদেশ ও আন্তর্জাতিক', icon: Icons.public),
-        ])
-          SizedBox(
-            width: 260,
-            height: 150,
-            child: _StudyCard(
-              title: item.title,
-              subtitle: item.subtitle,
-              icon: item.icon,
-              onTap: () => onStudyTap(item.title),
-            ),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 560 ? 1 : 2;
+        final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final item
+                in const <({String title, String subtitle, IconData icon})>[
+              (title: 'বাংলা', subtitle: 'ব্যাকরণ ও সাহিত্য', icon: Icons.auto_stories),
+              (title: 'ইংরেজি', subtitle: 'গ্রামার ও ভোকাবুলারি', icon: Icons.language),
+              (title: 'গণিত', subtitle: 'পাটিগণিত থেকে জ্যামিতি', icon: Icons.calculate),
+              (title: 'সাধারণ জ্ঞান', subtitle: 'বাংলাদেশ ও আন্তর্জাতিক', icon: Icons.public),
+            ])
+              SizedBox(
+                width: width,
+                height: 150,
+                child: _StudyCard(
+                  title: item.title,
+                  subtitle: item.subtitle,
+                  icon: item.icon,
+                  onTap: () => onStudyTap(item.title),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

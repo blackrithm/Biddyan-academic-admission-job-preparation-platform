@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/providers.dart';
 import '../screens/admin_screen.dart';
+import '../screens/exam_calendar_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/exam_room_screen.dart';
-import '../screens/home_screen.dart';
+import '../screens/mobile_dashboard.dart';
 import '../screens/result_screen.dart';
+import '../screens/subject_practice_screen.dart';
+import '../screens/subject_catalog_screen.dart';
 import '../services/services.dart';
 
 /// Declarative GoRouter configuration.
@@ -35,6 +38,18 @@ final router = GoRouter(
       path: '/admin',
       builder: (context, state) => const AdminScreen(),
     ),
+    GoRoute(
+      path: '/subject-practice',
+      builder: (context, state) => const SubjectPracticeScreen(),
+    ),
+    GoRoute(
+      path: '/subject-catalog',
+      builder: (context, state) => const SubjectCatalogScreen(),
+    ),
+    GoRoute(
+      path: '/exam-calendar',
+      builder: (context, state) => const ExamCalendarScreen(),
+    ),
   ],
 );
 
@@ -48,7 +63,7 @@ class _HomeGate extends ConsumerWidget {
     if (!authState.isLoggedIn) {
       return const AuthScreen();
     }
-    return const HomeScreen();
+    return const MobileDashboard();
   }
 }
 

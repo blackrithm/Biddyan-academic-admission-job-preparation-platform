@@ -27,14 +27,14 @@ class AppTheme {
 
     return base.copyWith(
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppConstants.surface,
-        foregroundColor: Color(0xFF111827),
+        backgroundColor: AppConstants.primary,
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 20,
-          color: Color(0xFF111827),
+          color: Colors.white,
         ),
       ),
       cardTheme: const CardThemeData(
@@ -45,6 +45,16 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
         surfaceTintColor: Colors.transparent,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppConstants.surface,
+        indicatorColor: const Color(0x24006A4E),
+        labelTextStyle: const WidgetStatePropertyAll(
+          TextStyle(color: AppConstants.primary, fontWeight: FontWeight.w600),
+        ),
+        iconTheme: const WidgetStatePropertyAll(
+          IconThemeData(color: AppConstants.primary),
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

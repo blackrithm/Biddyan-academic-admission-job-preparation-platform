@@ -28,14 +28,23 @@ class AuthScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'বিদ্যান',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 44,
-                    fontWeight: FontWeight.w800,
-                    color: AppConstants.primary,
-                  ),
+                Column(
+                  children: [
+                    Image.asset(
+                      'assets/biddyan_logo.png',
+                      height: 150,
+                      fit: BoxFit.contain,
+                    ),
+                    const Text(
+                      'বিদ্যান',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppConstants.primary,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 const Text(

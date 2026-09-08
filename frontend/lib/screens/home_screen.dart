@@ -164,10 +164,10 @@ class _PackageBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card.filled(
       color: const Color(0xFFEAF4EC),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 520;
+          final content = [
             const Icon(
               Icons.workspace_premium,
               color: AppConstants.golden,
@@ -188,8 +188,22 @@ class _PackageBanner extends StatelessWidget {
               ),
               child: const Text('প্যাকেজ দেখুন'),
             ),
-          ],
-        ),
+          ];
+
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: compact
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [content[0], content[1], content[2]]),
+                      const SizedBox(height: 12),
+                      content[3],
+                    ],
+                  )
+                : Row(children: content),
+          );
+        },
       ),
     );
   }
@@ -220,21 +234,27 @@ class _CategoryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        for (final category in categories)
-          SizedBox(
-            width: 170,
-            height: 120,
-            child: _CategoryCard(
-              title: category.title,
-              icon: category.icon,
-               onTap: () => onCategoryTap(category.title),
-            ),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 360 ? 1 : 2;
+        final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final category in categories)
+              SizedBox(
+                width: width,
+                height: 120,
+                child: _CategoryCard(
+                  title: category.title,
+                  icon: category.icon,
+                  onTap: () => onCategoryTap(category.title),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

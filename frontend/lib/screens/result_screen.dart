@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
+import '../widgets/brand_navigation.dart';
 
 /// Result & Analytics Sheet.
 ///
@@ -33,7 +34,7 @@ class ResultScreen extends ConsumerWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
               const _ScoreHero(),
               const SizedBox(height: 20),
@@ -59,6 +60,10 @@ class ResultScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BrandBottomNavigation(
+        selectedIndex: 2,
+        onSelected: (_) {},
       ),
     );
   }
@@ -114,63 +119,95 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _StatRow(
-          label: 'মোট পরীক্ষার্থী',
-          value: '$totalExaminees',
-          icon: Icons.people,
-        ),
-        _StatRow(
-          label: 'পাশের সংখ্যা',
-          value: '$passCount',
-          icon: Icons.how_to_reg,
-        ),
-        _StatRow(
-          label: 'কাট-মার্ক',
-          value: '$cutMark',
-          icon: Icons.filter_alt,
-        ),
-        _StatRow(
-          label: 'মোট প্রশ্ন',
-          value: '$totalQuestions',
-          icon: Icons.quiz,
-        ),
-        _StatRow(
-          label: 'সঠিক উত্তর',
-          value: '$correctCount',
-          icon: Icons.check_circle,
-          emphasized: true,
-        ),
-        _StatRow(
-          label: 'ভুল উত্তর',
-          value: '$wrongCount',
-          icon: Icons.cancel,
-        ),
-        _StatRow(
-          label: 'উত্তর দেওয়া হয়নি',
-          value: '${(totalQuestions - correctCount - wrongCount).clamp(0, totalQuestions)}',
-          icon: Icons.remove_circle_outline,
-        ),
-        _StatRow(
-          label: 'আপনার স্কোর',
-          value: '$userScore',
-          icon: Icons.scoreboard,
-          emphasized: true,
-        ),
-        _StatRow(
-          label: 'আপনার র‍্যাংক',
-          value: rank != null ? '#$rank' : '—',
-          icon: Icons.emoji_events,
-          emphasized: true,
-        ),
-      ],
+    final unanswered =
+        (totalQuestions - correctCount - wrongCount).clamp(0, totalQuestions);
+    final stats = [
+      (
+        label: 'মোট পরীক্ষার্থী',
+        value: '$totalExaminees',
+        icon: Icons.people,
+        emphasized: false
+      ),
+      (
+        label: 'পাশের সংখ্যা',
+        value: '$passCount',
+        icon: Icons.how_to_reg,
+        emphasized: false
+      ),
+      (
+        label: 'কাট-মার্ক',
+        value: '$cutMark',
+        icon: Icons.filter_alt,
+        emphasized: false
+      ),
+      (
+        label: 'মোট প্রশ্ন',
+        value: '$totalQuestions',
+        icon: Icons.quiz,
+        emphasized: false
+      ),
+      (
+        label: 'সঠিক উত্তর',
+        value: '$correctCount',
+        icon: Icons.check_circle,
+        emphasized: true
+      ),
+      (
+        label: 'ভুল উত্তর',
+        value: '$wrongCount',
+        icon: Icons.cancel,
+        emphasized: false
+      ),
+      (
+        label: 'উত্তর দেওয়া হয়নি',
+        value: '$unanswered',
+        icon: Icons.remove_circle_outline,
+        emphasized: false
+      ),
+      (
+        label: 'আপনার স্কোর',
+        value: userScore.toStringAsFixed(2),
+        icon: Icons.scoreboard,
+        emphasized: true
+      ),
+      (
+        label: 'আপনার র‍্যাংক',
+        value: rank != null ? '#$rank' : '—',
+        icon: Icons.emoji_events,
+        emphasized: true
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 700 ? 3 : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: stats.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: columns == 3 ? 1.8 : 1.7,
+          ),
+          itemBuilder: (context, index) {
+            final stat = stats[index];
+            return _StatCard(
+              label: stat.label,
+              value: stat.value,
+              icon: stat.icon,
+              emphasized: stat.emphasized,
+            );
+          },
+        );
+      },
     );
   }
 }
 
-class _StatRow extends StatelessWidget {
-  const _StatRow({
+class _StatCard extends StatelessWidget {
+  const _StatCard({
     required this.label,
     required this.value,
     required this.icon,
@@ -186,32 +223,39 @@ class _StatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              color: emphasized ? AppConstants.primary : AppConstants.accent,
-              size: 26,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: AppConstants.mutedText,
-                  fontSize: 14,
-                ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (emphasized ? AppConstants.primary : AppConstants.accent)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: emphasized ? AppConstants.primary : AppConstants.accent,
+                size: 20,
               ),
             ),
+            const Spacer(),
             Text(
               value,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: emphasized
-                    ? AppConstants.primary
-                    : const Color(0xFF111827),
+                color:
+                    emphasized ? AppConstants.primary : const Color(0xFF111827),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppConstants.mutedText,
+                fontSize: 12,
               ),
             ),
           ],
@@ -220,6 +264,7 @@ class _StatRow extends StatelessWidget {
     );
   }
 }
+
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.title, required this.child});
 
@@ -335,7 +380,8 @@ class _BreakdownTable extends StatelessWidget {
                           AppConstants.optionKeys[optionIndex],
                     ),
                   const SizedBox(height: 4),
-                  if ((item?.explanation ?? question.explanation ?? '').isNotEmpty)
+                  if ((item?.explanation ?? question.explanation ?? '')
+                      .isNotEmpty)
                     Text(
                       'ব্যাখ্যা: ${item?.explanation ?? question.explanation}',
                       style: const TextStyle(color: AppConstants.mutedText),
@@ -344,8 +390,7 @@ class _BreakdownTable extends StatelessWidget {
               );
             },
           ),
-          if (index < exam!.questions.length - 1)
-            const Divider(height: 24),
+          if (index < exam!.questions.length - 1) const Divider(height: 24),
         ],
       ],
     );

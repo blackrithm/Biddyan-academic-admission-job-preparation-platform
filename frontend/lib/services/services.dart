@@ -117,6 +117,11 @@ class ExamService {
 
   final ApiClient client;
 
+  Future<Exam> create(Map<String, dynamic> body) async {
+    final json = await client.post('exams', body: body);
+    return Exam.fromJson(json as Map<String, dynamic>);
+  }
+
   Future<List<Exam>> list() async {
     try {
       final json = await client.get('exams');
@@ -175,8 +180,9 @@ class ExamService {
       int wrong = 0;
       final breakdown = <AnswerBreakdown>[];
       for (final answer in answers) {
-        final question = MockData.questions
-            .firstWhere((q) => q.id == answer.questionId, orElse: () => MockData.questions.first);
+        final question = MockData.questions.firstWhere(
+            (q) => q.id == answer.questionId,
+            orElse: () => MockData.questions.first);
         final isCorrect = question.correctOption == answer.selectedOption;
         if (isCorrect) {
           correct++;
