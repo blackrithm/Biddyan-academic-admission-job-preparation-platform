@@ -49,7 +49,9 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/subject-catalog',
-      builder: (context, state) => const SubjectCatalogScreen(),
+      builder: (context, state) => SubjectCatalogScreen(
+        categoryName: state.uri.queryParameters['category'],
+      ),
     ),
     GoRoute(
       path: '/previous-question-bank',

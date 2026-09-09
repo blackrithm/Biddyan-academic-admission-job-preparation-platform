@@ -60,10 +60,8 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _CategoryGrid(
                 categories: _categories,
-                onCategoryTap: (category) => _showSectionMessage(
-                  context,
-                  category,
-                  'এই বিভাগের পরীক্ষা খুব শীঘ্রই যুক্ত হবে।',
+                onCategoryTap: (category) => context.go(
+                  '/subject-catalog?category=${Uri.encodeComponent(category)}',
                 ),
               ),
               const SizedBox(height: 24),

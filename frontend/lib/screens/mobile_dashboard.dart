@@ -141,12 +141,18 @@ class _DashboardHome extends StatelessWidget {
             ('ভর্তি পরীক্ষা', FontAwesomeIcons.graduationCap),
           ],
           onTap: (title) {
-            if (title == 'BCS প্রস্তুতি') {
-              context.push('/subject-practice');
+            if (title != 'প্রিলি ও লিখিত প্রস্তুতি' &&
+                title != 'ফ্রি সাপ্তাহিক মডেল টেস্ট') {
+              final category = switch (title) {
+                'BCS প্রস্তুতি' => 'BCS',
+                'ব্যাংক জব' => 'Bank',
+                _ => title,
+              };
+              context.push(
+                '/subject-catalog?category=${Uri.encodeComponent(category)}',
+              );
             } else if (title == 'প্রিলি ও লিখিত প্রস্তুতি') {
               context.push('/previous-question-bank');
-            } else if (title != 'ফ্রি সাপ্তাহিক মডেল টেস্ট') {
-              context.push('/subject-catalog');
             }
           },
         ),
