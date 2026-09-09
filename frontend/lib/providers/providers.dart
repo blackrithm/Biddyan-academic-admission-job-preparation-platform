@@ -53,12 +53,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(isGuest: true);
   }
 
-  Future<void> register(String phoneNumber, String password) async {
+  Future<void> register(
+    String phoneNumber,
+    String password, {
+    required String role,
+  }) async {
     state = const AuthState(isLoading: true);
     try {
       final user = await AuthService(apiClient).register(
         phoneNumber: phoneNumber,
         password: password,
+        role: role,
         guestId: apiClient.authToken,
       );
       apiClient.authToken = user.token;
@@ -68,12 +73,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> login(String phoneNumber, String password) async {
+  Future<void> login(
+    String phoneNumber,
+    String password, {
+    required String role,
+  }) async {
     state = const AuthState(isLoading: true);
     try {
       final user = await AuthService(apiClient).login(
         phoneNumber: phoneNumber,
         password: password,
+        role: role,
       );
       apiClient.authToken = user.token;
       state = AuthState(user: user);

@@ -8,7 +8,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'biddyan_jwt_secret_high_entropy_20
 
 export class AuthController {
   static async register(req: Request, res: Response) {
-    const { phoneNumber, password, guestId } = req.body;
+    const { phoneNumber, password, guestId, role = 'student' } = req.body;
+    const accountRole = role === 'admin' ? 'admin' : 'student';
     if (!phoneNumber || !password || password.length < 4) {
       return res.status(400).json({ error: 'Phone number and a 4+ character password are required' });
     }
@@ -23,14 +24,15 @@ export class AuthController {
         const result = existing.rows.length
           ? await client.query(
               `UPDATE users SET phone_number = $1, password_hash = $2,
-               display_name = $3 WHERE id = $4 RETURNING id, phone_number, display_name, role`,
-              [phoneNumber, passwordHash, `User ${phoneNumber.slice(-4)}`, guestId],
+               display_name = $3, role = $4 WHERE id = $5
+               RETURNING id, phone_number, display_name, role`,
+              [phoneNumber, passwordHash, `User ${phoneNumber.slice(-4)}`, accountRole, guestId],
             )
           : await client.query(
-              `INSERT INTO users (phone_number, password_hash, display_name)
-               VALUES ($1, $2, $3)
+              `INSERT INTO users (phone_number, password_hash, display_name, role)
+               VALUES ($1, $2, $3, $4)
                RETURNING id, phone_number, display_name, role`,
-              [phoneNumber, passwordHash, `User ${phoneNumber.slice(-4)}`],
+              [phoneNumber, passwordHash, `User ${phoneNumber.slice(-4)}`, accountRole],
             );
         if (guestId) {
           await client.query('UPDATE user_exam_attempts SET user_id = $1 WHERE user_id = $2', [result.rows[0].id, guestId]);
@@ -51,12 +53,13 @@ export class AuthController {
   }
 
   static async login(req: Request, res: Response) {
-    const { phoneNumber, password } = req.body;
+    const { phoneNumber, password, role = 'student' } = req.body;
+    const accountRole = role === 'admin' ? 'admin' : 'student';
     if (!phoneNumber || !password) return res.status(400).json({ error: 'Phone number and password are required' });
     try {
       const result = await pool.query(
-        'SELECT id, phone_number, display_name, role, password_hash FROM users WHERE phone_number = $1',
-        [phoneNumber],
+        'SELECT id, phone_number, display_name, role, password_hash FROM users WHERE phone_number = $1 AND (role = $2 OR ($2 = \'student\' AND role = \'user\'))',
+        [phoneNumber, accountRole],
       );
       const user = result.rows[0];
       if (!user || !user.password_hash || !(await bcrypt.compare(password, user.password_hash))) {
@@ -75,7 +78,7 @@ export class AuthController {
       message: 'Authentication successful',
       userId: user.id,
       token,
-      user: { phoneNumber: user.phone_number, displayName: user.display_name },
+      user: { phoneNumber: user.phone_number, displayName: user.display_name, role: user.role },
     });
   }
   /**

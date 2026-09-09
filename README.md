@@ -1,6 +1,6 @@
-# Biddyan
+# বিদ্বান
 
-**Biddyan - Academic, Admission & Job Preparation Platform**
+**বিদ্বান (Biddyan) - Academic, Admission & Job Preparation Platform**
 
 Biddyan is a Bengali-first preparation platform for academic, admission, BCS,
 bank, and government job examinations. It includes a Flutter client, a
@@ -9,7 +9,9 @@ TypeScript/Express API, PostgreSQL persistence, and Redis-powered leaderboards.
 ## Features
 
 - OTP and social-login demo flows
+- Separate Student and Admin login options with role-aware authentication
 - Exam categories and study sections
+- Dynamic category tabs with isolated subjects, chapters, and question-bank sets
 - Full-page exam experience with all questions shown vertically
 - MCQ answer selection with negative marking
 - Result analytics with score, rank, correct/wrong counts, and marks
@@ -35,8 +37,9 @@ flutter pub get
 flutter run -d chrome
 ```
 
-If the backend is unavailable, the frontend uses local demo data. For the
-offline OTP flow, use:
+If the backend is unavailable, the frontend uses local demo data. The login
+screen provides Student and Admin account options. For the offline OTP flow,
+use:
 
 ```text
 123456

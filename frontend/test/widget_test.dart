@@ -10,6 +10,6 @@ void main() {
     );
 
     // The home gate shows the auth screen by default (not logged in).
-    expect(find.text('বিদ্যান'), findsOneWidget);
+    expect(find.text('বিদ্বান'), findsOneWidget);
   });
 }

@@ -15,7 +15,7 @@ class BiddyanApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'বিদ্যান',
+      title: 'বিদ্বান',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,

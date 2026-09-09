@@ -15,11 +15,13 @@ class AuthService {
   Future<AuthUser> register({
     required String phoneNumber,
     required String password,
+    required String role,
     String? guestId,
   }) async {
     final json = await client.post('auth/register', body: {
       'phoneNumber': phoneNumber,
       'password': password,
+      'role': role,
       if (guestId != null) 'guestId': guestId,
     });
     return AuthUser.fromJson(json as Map<String, dynamic>);
@@ -28,10 +30,12 @@ class AuthService {
   Future<AuthUser> login({
     required String phoneNumber,
     required String password,
+    required String role,
   }) async {
     final json = await client.post('auth/login', body: {
       'phoneNumber': phoneNumber,
       'password': password,
+      'role': role,
     });
     return AuthUser.fromJson(json as Map<String, dynamic>);
   }

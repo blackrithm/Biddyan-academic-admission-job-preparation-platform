@@ -10,6 +10,7 @@ class AuthUser {
     required this.userId,
     required this.phoneNumber,
     required this.displayName,
+    this.role = 'student',
     this.email,
   });
 
@@ -17,6 +18,7 @@ class AuthUser {
   final String userId;
   final String phoneNumber;
   final String displayName;
+  final String role;
   final String? email;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class AuthUser {
       displayName: (user['displayName'] as String?) ??
           (user['email'] as String?) ??
           'Biddyan User',
+      role: (user['role'] as String?) ?? 'student',
       email: user['email'] as String?,
     );
   }

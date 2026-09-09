@@ -34,7 +34,7 @@ class AuthScreen extends ConsumerWidget {
                       fit: BoxFit.contain,
                     ),
                     const Text(
-                      'বিদ্যান',
+                      'বিদ্বান',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 20,
@@ -91,6 +91,7 @@ class _AccountFormState extends State<_AccountForm> {
   final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loginMode = false;
+  String _role = 'student';
 
   @override
   void dispose() {
@@ -113,6 +114,35 @@ class _AccountFormState extends State<_AccountForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const Text(
+          'আপনি কীভাবে প্রবেশ করবেন?',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _RoleButton(
+                label: 'Student',
+                subtitle: 'শিক্ষার্থী',
+                icon: Icons.school_outlined,
+                selected: _role == 'student',
+                onTap: () => setState(() => _role = 'student'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _RoleButton(
+                label: 'Admin',
+                subtitle: 'অ্যাডমিন',
+                icon: Icons.admin_panel_settings_outlined,
+                selected: _role == 'admin',
+                onTap: () => setState(() => _role = 'admin'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         if (errorText != null) ...[
           _ErrorBanner(text: errorText),
           const SizedBox(height: 12),
@@ -136,9 +166,13 @@ class _AccountFormState extends State<_AccountForm> {
           ),
         ),
         const SizedBox(height: 10),
-        FilledButton(
+        SizedBox(
+          height: 52,
+          child: FilledButton.icon(
+            icon: Icon(_loginMode ? Icons.login : Icons.person_add_alt_1),
           onPressed: _submit,
-          child: Text(_loginMode ? 'লগইন করুন' : 'Account খুলুন'),
+            label: Text(_loginMode ? 'লগইন করুন' : 'Account খুলুন'),
+          ),
         ),
         TextButton(
           onPressed: () => setState(() => _loginMode = !_loginMode),
@@ -160,10 +194,77 @@ class _AccountFormState extends State<_AccountForm> {
       return;
     }
     if (_loginMode) {
-      await widget.notifier.login(phone, password);
+      await widget.notifier.login(phone, password, role: _role);
     } else {
-      await widget.notifier.register(phone, password);
+      await widget.notifier.register(phone, password, role: _role);
     }
+  }
+}
+
+class _RoleButton extends StatelessWidget {
+  const _RoleButton({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppConstants.primary.withValues(alpha: 0.1)
+          : AppConstants.background,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? AppConstants.primary
+                  : const Color(0xFFE2E8F0),
+              width: selected ? 1.8 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: selected ? AppConstants.primary : AppConstants.mutedText,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: AppConstants.mutedText, fontSize: 12)),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle,
+                    color: AppConstants.primary, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
