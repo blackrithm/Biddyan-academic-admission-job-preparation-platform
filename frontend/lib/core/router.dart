@@ -42,7 +42,10 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/subject-practice',
-      builder: (context, state) => const SubjectPracticeScreen(),
+      builder: (context, state) => SubjectPracticeScreen(
+        topicId: state.uri.queryParameters['topicId'],
+        topicName: state.uri.queryParameters['topicName'],
+      ),
     ),
     GoRoute(
       path: '/subject-catalog',
@@ -74,6 +77,10 @@ final router = GoRouter(
         selectedIndex: 4,
       ),
     ),
+    GoRoute(
+      path: '/account',
+      builder: (context, state) => const AuthScreen(),
+    ),
   ],
 );
 
@@ -84,7 +91,7 @@ class _HomeGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
-    if (!authState.isLoggedIn) {
+    if (!authState.canEnterApp) {
       return const AuthScreen();
     }
     return const MobileDashboard();

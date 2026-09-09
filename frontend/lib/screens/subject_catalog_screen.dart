@@ -1,57 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
+import '../models/models.dart';
+import '../providers/providers.dart';
+import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
 
-class SubjectCatalogScreen extends StatefulWidget {
+class SubjectCatalogScreen extends ConsumerStatefulWidget {
   const SubjectCatalogScreen({super.key});
 
   @override
-  State<SubjectCatalogScreen> createState() => _SubjectCatalogScreenState();
+  ConsumerState<SubjectCatalogScreen> createState() =>
+      _SubjectCatalogScreenState();
 }
 
-class _SubjectCatalogScreenState extends State<SubjectCatalogScreen> {
+class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
   final _searchController = TextEditingController();
+  late Future<_CatalogData> _catalog;
 
-  static const _subjects = [
-    ('বাংলা', 'জাতীয় বিশ্ববিদ্যালয়', 30, '5724+', 0.25, Color(0xFF3949AB)),
-    ('ইতিহাস', 'জাতীয় বিশ্ববিদ্যালয়', 34, '4717+', 0.72, Color(0xFF388E3C)),
-    (
-      'ইসলামের ইতিহাস ও সংস্কৃতি',
-      'জাতীয় বিশ্ববিদ্যালয়',
-      35,
-      '6704+',
-      0.76,
-      Color(0xFFC62828)
-    ),
-    ('দর্শন', 'জাতীয় বিশ্ববিদ্যালয়', 33, '5773+', 0.23, Color(0xFF7B1FA2)),
-    (
-      'ইসলামী শিক্ষা',
-      'জাতীয় বিশ্ববিদ্যালয়',
-      33,
-      '5248+',
-      0.66,
-      Color(0xFF00796B)
-    ),
-    (
-      'রাষ্ট্রবিজ্ঞান',
-      'জাতীয় বিশ্ববিদ্যালয়',
-      36,
-      '4393+',
-      0.84,
-      Color(0xFFEF6C00)
-    ),
-    ('অর্থনীতি', 'জাতীয় বিশ্ববিদ্যালয়', 33, '6172+', 0.58, Color(0xFFC2185B)),
-    (
-      'সমাজবিজ্ঞান',
-      'জাতীয় বিশ্ববিদ্যালয়',
-      36,
-      '4359+',
-      0.40,
-      Color(0xFF37474F)
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _catalog = _loadCatalog();
+  }
+
+  Future<_CatalogData> _loadCatalog() async {
+    final topics = await TopicService(apiClient).getTree();
+    final questions = await QuestionService(apiClient).list();
+    final topicIds = <String>{
+      for (final question in questions) question.topicId
+    };
+    final visible = <TopicNode>[];
+    void walk(List<TopicNode> nodes) {
+      for (final node in nodes) {
+        if (topicIds.contains(node.id)) visible.add(node);
+        walk(node.children);
+      }
+    }
+
+    walk(topics);
+    return _CatalogData(topics: visible, questions: questions);
+  }
 
   @override
   void dispose() {
@@ -61,85 +52,108 @@ class _SubjectCatalogScreenState extends State<SubjectCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final query = _searchController.text.trim();
-    final filtered =
-        _subjects.where((subject) => subject.$1.contains(query)).toList();
-
     return Scaffold(
       backgroundColor: AppConstants.background,
       appBar: AppBar(title: const Text('বিষয়সমূহ')),
       body: ListView(
         children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _searchController,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'বিষয়ের নাম লিখুন...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: FilledButton(
-                            onPressed: () => FocusScope.of(context).unfocus(),
-                            child: const Text('খোঁজো'),
+          FutureBuilder<_CatalogData>(
+            future: _catalog,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('বিষয় লোড করা যায়নি: ${snapshot.error}'),
+                );
+              }
+              final query = _searchController.text.trim().toLowerCase();
+              final filtered = snapshot.data!.topics
+                  .where((topic) => topic.name.toLowerCase().contains(query))
+                  .toList();
+              return Center(
+                  child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'বিষয়ের নাম লিখুন...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: FilledButton(
+                              onPressed: () => FocusScope.of(context).unfocus(),
+                              child: const Text('খোঁজো'),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    Card(
-                      color: AppConstants.primary.withValues(alpha: 0.08),
-                      child: ListTile(
-                        leading: const Icon(Icons.history_edu,
-                            color: AppConstants.primary),
-                        title: const Text('Previous Question Bank',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle:
-                            const Text('বিগত বছরের প্রশ্ন দেখে অনুশীলন করুন'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.push('/previous-question-bank'),
+                      const SizedBox(height: 18),
+                      Card(
+                        color: AppConstants.primary.withValues(alpha: 0.08),
+                        child: ListTile(
+                          leading: const Icon(Icons.history_edu,
+                              color: AppConstants.primary),
+                          title: const Text('Previous Question Bank',
+                              style: TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle:
+                              const Text('বিগত বছরের প্রশ্ন দেখে অনুশীলন করুন'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push('/previous-question-bank'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filtered.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.15,
+                      const SizedBox(height: 14),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filtered.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.15,
+                        ),
+                        itemBuilder: (context, index) {
+                          final subject = filtered[index];
+                          final count = snapshot.data!.questions
+                              .where(
+                                  (question) => question.topicId == subject.id)
+                              .length;
+                          return _SubjectCard(
+                            name: subject.name,
+                            institution: 'Database question bank',
+                            courses: count,
+                            questions: '$count',
+                            progress: count == 0 ? 0 : 1,
+                            color: AppConstants.primary,
+                            onTap: () => context.push(
+                              '/subject-practice?topicId=${Uri.encodeComponent(subject.id)}&topicName=${Uri.encodeComponent(subject.name)}',
+                            ),
+                          );
+                        },
                       ),
-                      itemBuilder: (context, index) {
-                        final subject = filtered[index];
-                        return _SubjectCard(
-                          name: subject.$1,
-                          institution: subject.$2,
-                          courses: subject.$3,
-                          questions: subject.$4,
-                          progress: subject.$5,
-                          color: subject.$6,
-                          onTap: () => context.push('/subject-practice'),
-                        );
-                      },
-                    ),
-                    if (filtered.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Center(child: Text('কোনো বিষয় পাওয়া যায়নি')),
-                      ),
-                  ],
+                      if (filtered.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32),
+                          child:
+                              Center(child: Text('কোনো বিষয় পাওয়া যায়নি')),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              ));
+            },
           ),
         ],
       ),
@@ -149,6 +163,15 @@ class _SubjectCatalogScreenState extends State<SubjectCatalogScreen> {
       ),
     );
   }
+}
+
+/// Loaded catalog payload: the topics that have at least one MCQ plus the
+/// full question list used to compute per-subject question counts.
+class _CatalogData {
+  const _CatalogData({required this.topics, required this.questions});
+
+  final List<TopicNode> topics;
+  final List<Question> questions;
 }
 
 class _SubjectCard extends StatelessWidget {

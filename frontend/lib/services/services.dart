@@ -12,6 +12,30 @@ class AuthService {
   final ApiClient client;
   static const mockOtp = '123456';
 
+  Future<AuthUser> register({
+    required String phoneNumber,
+    required String password,
+    String? guestId,
+  }) async {
+    final json = await client.post('auth/register', body: {
+      'phoneNumber': phoneNumber,
+      'password': password,
+      if (guestId != null) 'guestId': guestId,
+    });
+    return AuthUser.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<AuthUser> login({
+    required String phoneNumber,
+    required String password,
+  }) async {
+    final json = await client.post('auth/login', body: {
+      'phoneNumber': phoneNumber,
+      'password': password,
+    });
+    return AuthUser.fromJson(json as Map<String, dynamic>);
+  }
+
   /// POST /api/v1/auth/otp-request
   Future<void> requestOtp(String phoneNumber) async {
     try {
@@ -84,6 +108,8 @@ class QuestionService {
     String? topicId,
     String? search,
     String? previousYear,
+    String? examType,
+    String? questionSet,
   }) async {
     try {
       final json = await client.get(
@@ -92,6 +118,8 @@ class QuestionService {
           if (topicId != null) 'topicId': topicId,
           if (search != null) 'search': search,
           if (previousYear != null) 'previousYear': previousYear,
+          if (examType != null) 'examType': examType,
+          if (questionSet != null) 'questionSet': questionSet,
         },
       );
       return (json as List<dynamic>)
@@ -105,6 +133,19 @@ class QuestionService {
   Future<Question> create(Map<String, dynamic> body) async {
     final json = await client.post('questions', body: body);
     return Question.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<int> bulkCreate({
+    required String topicId,
+    required List<Map<String, dynamic>> questions,
+    Map<String, dynamic> defaults = const {},
+  }) async {
+    final json = await client.post('questions/bulk', body: {
+      'topic_id': topicId,
+      'questions': questions,
+      'defaults': defaults,
+    }) as Map<String, dynamic>;
+    return (json['count'] as num).toInt();
   }
 
   Future<Question> update(String id, Map<String, dynamic> body) async {

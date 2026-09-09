@@ -14,17 +14,25 @@ final ApiClient apiClient = ApiClient();
 
 /// Immutable auth/session state exposed by [AuthNotifier].
 class AuthState {
-  const AuthState({this.user, this.isLoading = false, this.errorMessage});
+  const AuthState({
+    this.user,
+    this.isGuest = false,
+    this.isLoading = false,
+    this.errorMessage,
+  });
 
   final AuthUser? user;
+  final bool isGuest;
   final bool isLoading;
   final String? errorMessage;
 
+  bool get canEnterApp => user != null || isGuest;
   bool get isLoggedIn => user != null;
 
-  AuthState copyWith({AuthUser? user, bool? isLoading, String? errorMessage}) {
+  AuthState copyWith({AuthUser? user, bool? isGuest, bool? isLoading, String? errorMessage}) {
     return AuthState(
       user: user ?? this.user,
+      isGuest: isGuest ?? this.isGuest,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -35,7 +43,44 @@ class AuthState {
 /// [logout] through `ref.read(authNotifierProvider.notifier)` and listens to
 /// state via `ref.watch(authNotifierProvider)`.
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState());
+  AuthNotifier() : super(const AuthState(isGuest: true)) {
+    continueAsGuest();
+  }
+
+  void continueAsGuest() {
+    final guestId = 'b1dd1a11-0000-4000-8000-${DateTime.now().microsecondsSinceEpoch.toString().padLeft(12, '0').substring(0, 12)}';
+    apiClient.authToken = guestId;
+    state = const AuthState(isGuest: true);
+  }
+
+  Future<void> register(String phoneNumber, String password) async {
+    state = const AuthState(isLoading: true);
+    try {
+      final user = await AuthService(apiClient).register(
+        phoneNumber: phoneNumber,
+        password: password,
+        guestId: apiClient.authToken,
+      );
+      apiClient.authToken = user.token;
+      state = AuthState(user: user);
+    } catch (error) {
+      state = AuthState(errorMessage: error.toString());
+    }
+  }
+
+  Future<void> login(String phoneNumber, String password) async {
+    state = const AuthState(isLoading: true);
+    try {
+      final user = await AuthService(apiClient).login(
+        phoneNumber: phoneNumber,
+        password: password,
+      );
+      apiClient.authToken = user.token;
+      state = AuthState(user: user);
+    } catch (error) {
+      state = AuthState(errorMessage: error.toString());
+    }
+  }
 
   Future<void> loginWithOtp(String phoneNumber, String otp) async {
     state = const AuthState(isLoading: true);
@@ -69,7 +114,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  void logout() => state = const AuthState();
+  void logout() {
+    apiClient.authToken = null;
+    state = const AuthState();
+  }
 }
 
 /// Riverpod provider exposing [AuthNotifier] and its [AuthState] to consumers.

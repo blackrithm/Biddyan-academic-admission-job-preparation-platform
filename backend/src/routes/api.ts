@@ -10,6 +10,8 @@ const router = Router();
 router.post('/auth/otp-request', AuthController.requestOtp);
 router.post('/auth/otp-verify', AuthController.verifyOtp);
 router.post('/auth/social-login', AuthController.socialLogin);
+router.post('/auth/register', AuthController.register);
+router.post('/auth/login', AuthController.login);
 
 // --- TOPICS (CATEGORIES) ROUTES ---
 router.post('/topics', TopicController.createTopic);
@@ -20,6 +22,7 @@ router.delete('/topics/:id', TopicController.deleteTopic);
 
 // --- QUESTIONS (MCQ) ROUTES ---
 router.post('/questions', QuestionController.createQuestion);
+router.post('/questions/bulk', QuestionController.bulkCreateQuestions);
 router.get('/questions', QuestionController.getQuestions);
 router.get('/questions/:id', QuestionController.getQuestionById);
 router.put('/questions/:id', QuestionController.updateQuestion);

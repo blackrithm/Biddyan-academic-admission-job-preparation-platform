@@ -72,6 +72,9 @@ class Question {
     this.previousYears = const [],
     this.difficultyLevel = 'medium',
     this.topicName,
+    this.examType,
+    this.questionSet,
+    this.source = 'admin',
   });
 
   final String id;
@@ -86,6 +89,9 @@ class Question {
   final List<String> previousYears;
   final String difficultyLevel;
   final String? topicName;
+  final String? examType;
+  final String? questionSet;
+  final String source;
 
   List<String> get options => [optionA, optionB, optionC, optionD];
 
@@ -105,6 +111,9 @@ class Question {
           .toList(),
       difficultyLevel: (json['difficulty_level'] as String?) ?? 'medium',
       topicName: json['topic_name'] as String?,
+      examType: json['exam_type'] as String?,
+      questionSet: json['question_set'] as String?,
+      source: (json['source'] as String?) ?? 'admin',
     );
   }
 }

@@ -27,9 +27,13 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
   final _explanationCtrl = TextEditingController();
   final _tagCtrl = TextEditingController();
   final _bulkJsonCtrl = TextEditingController();
+  final _examTypeCtrl = TextEditingController();
+  final _questionSetCtrl = TextEditingController();
+  final _sourceCtrl = TextEditingController(text: 'admin');
 
   String? _topicId;
   String _correctOption = 'A';
+  String _difficulty = 'medium';
   final List<String> _previousYears = [];
   bool _saving = false;
   String? _error;
@@ -57,6 +61,9 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
     _explanationCtrl.dispose();
     _tagCtrl.dispose();
     _bulkJsonCtrl.dispose();
+    _examTypeCtrl.dispose();
+    _questionSetCtrl.dispose();
+    _sourceCtrl.dispose();
     super.dispose();
   }
 
@@ -124,6 +131,62 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                     const Text(
                       'এই বিভাগটি একবার নির্বাচন করলে নিচের সব প্রশ্নে প্রয়োগ হবে।',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _examTypeCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Exam type',
+                              hintText: 'যেমন: BCS প্রিলিমিনারি',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _questionSetCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Question set',
+                              hintText: 'যেমন: Set A / 2024',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: _difficulty,
+                            decoration: const InputDecoration(
+                              labelText: 'কঠিনতার স্তর',
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'easy', child: Text('সহজ')),
+                              DropdownMenuItem(
+                                  value: 'medium', child: Text('মাঝারি')),
+                              DropdownMenuItem(value: 'hard', child: Text('কঠিন')),
+                            ],
+                            onChanged: (value) => setState(
+                              () => _difficulty = value ?? 'medium',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _sourceCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Source / উৎস',
+                              hintText: 'যেমন: Admin, BCS 2023',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -259,7 +322,10 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
         'correct_option': _correctOption,
         'explanation': _explanationCtrl.text.trim(),
         'previous_years': _previousYears,
-        'difficulty_level': 'medium',
+        'difficulty_level': _difficulty,
+        'exam_type': _examTypeCtrl.text.trim(),
+        'question_set': _questionSetCtrl.text.trim(),
+        'source': _sourceCtrl.text.trim(),
       });
       setState(() {
         _success = 'প্রশ্ন সফলভাবে সংরক্ষিত হয়েছে';
@@ -293,17 +359,30 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
           _error = null;
           _success = null;
         });
+        final items = <Map<String, dynamic>>[];
         for (final item in decoded) {
           if (item is! Map) {
             throw const FormatException('প্রতিটি item JSON object হতে হবে');
           }
           final question = Map<String, dynamic>.from(item);
-          question['topic_id'] = _topicId;
-          await QuestionService(apiClient).create(question);
+          items.add(question);
         }
+        final count = await QuestionService(apiClient).bulkCreate(
+          topicId: _topicId!,
+          questions: items,
+          defaults: {
+            'exam_type': _examTypeCtrl.text.trim(),
+            'question_set': _questionSetCtrl.text.trim(),
+            'difficulty_level': _difficulty,
+            'source': _sourceCtrl.text.trim().isEmpty
+                ? 'bulk'
+                : _sourceCtrl.text.trim(),
+            'previous_years': _previousYears,
+          },
+        );
         setState(() {
           _bulkJsonCtrl.clear();
-          _success = '${decoded.length}টি প্রশ্ন সফলভাবে সংরক্ষিত হয়েছে';
+          _success = '$countটি প্রশ্ন সফলভাবে সংরক্ষিত হয়েছে';
         });
       } catch (e) {
         setState(() => _error = 'Bulk import ব্যর্থ: $e');

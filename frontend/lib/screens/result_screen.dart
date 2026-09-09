@@ -189,7 +189,9 @@ class _SummaryGrid extends StatelessWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: columns == 3 ? 1.8 : 1.7,
+            // The card contains an icon, value and Bengali label; a slightly
+            // taller mobile tile prevents the label from overflowing.
+            childAspectRatio: columns == 3 ? 1.9 : 1.45,
           ),
           itemBuilder: (context, index) {
             final stat = stats[index];

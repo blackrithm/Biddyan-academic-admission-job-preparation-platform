@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
+import '../providers/providers.dart';
 import '../widgets/brand_navigation.dart';
 import 'home_screen.dart';
 import 'home_sections.dart';
@@ -51,11 +52,15 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
               label: Text('10'),
               child: Icon(Icons.notifications_none),
             ),
-            onPressed: () => setState(() => _selectedIndex = 1),
+            onPressed: () => setState(
+              () => _selectedIndex = _selectedIndex == 1 ? 0 : 1,
+            ),
           ),
         ],
       ),
       drawer: _DashboardDrawer(
+        onAccount: () => context.push('/account'),
+        onLogout: () => ref.read(authNotifierProvider.notifier).logout(),
         onNavigate: (index) {
           Navigator.pop(context);
           setState(() => _selectedIndex = index);
@@ -72,7 +77,13 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
       ),
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 0,
-        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
+        onSelected: (index) {
+          if (index == 0) {
+            setState(() => _selectedIndex = 0);
+          } else {
+            BrandBottomNavigation.navigate(context, index);
+          }
+        },
       ),
     );
   }
@@ -449,8 +460,14 @@ class _PackagesPage extends StatelessWidget {
 }
 
 class _DashboardDrawer extends StatelessWidget {
-  const _DashboardDrawer({required this.onNavigate});
+  const _DashboardDrawer({
+    required this.onNavigate,
+    required this.onAccount,
+    required this.onLogout,
+  });
   final ValueChanged<int> onNavigate;
+  final VoidCallback onAccount;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) => Drawer(
@@ -475,6 +492,13 @@ class _DashboardDrawer extends StatelessWidget {
                 leading: const Icon(Icons.workspace_premium),
                 title: const Text('Packages'),
                 onTap: () => onNavigate(3)),
+            ListTile(
+                leading: const Icon(Icons.person_add_alt_1),
+                title: const Text('Account খুলুন / Login'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onAccount();
+                }),
             const Divider(),
             ListTile(
                 leading: const Icon(Icons.support_agent),
@@ -500,7 +524,7 @@ class _DashboardDrawer extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {},
+              onTap: onLogout,
             ),
           ],
         ),

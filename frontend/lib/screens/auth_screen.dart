@@ -1,12 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants.dart';
 import '../providers/providers.dart';
 
-/// Responsive OTP + social-login authentication screen.
+/// Phone/password authentication screen with guest access.
 ///
 /// On mobile the card fills the screen; on wide web canvases the brand hero
 /// and login card are laid out in a centered column.
@@ -59,45 +57,17 @@ class AuthScreen extends ConsumerWidget {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
-                    child: _OtpForm(
+                    child: _AccountForm(
                       authState: authState,
                       notifier: notifier,
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: const [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        'অথবা',
-                        style: TextStyle(color: AppConstants.mutedText),
-                      ),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => notifier.socialLogin('Google'),
-                        icon: const Icon(Icons.g_mobiledata),
-                        label: const Text('Google'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => notifier.socialLogin('Facebook'),
-                        icon: const Icon(Icons.facebook),
-                        label: const Text('Facebook'),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: notifier.continueAsGuest,
+                  icon: const Icon(Icons.visibility_outlined),
+                  label: const Text('Guest হিসেবে প্রবেশ করুন'),
                 ),
               ],
             ),
@@ -107,36 +77,32 @@ class AuthScreen extends ConsumerWidget {
     );
   }
 }
-class _OtpForm extends StatefulWidget {
-    const _OtpForm({required this.authState, required this.notifier});
+class _AccountForm extends StatefulWidget {
+  const _AccountForm({required this.authState, required this.notifier});
 
   final AuthState authState;
   final AuthNotifier notifier;
 
   @override
-  State<_OtpForm> createState() => _OtpFormState();
+  State<_AccountForm> createState() => _AccountFormState();
 }
 
-class _OtpFormState extends State<_OtpForm> {
+class _AccountFormState extends State<_AccountForm> {
   final _phoneCtrl = TextEditingController();
-  final _otpCtrl = TextEditingController();
-  bool _otpSent = false;
-  bool _sending = false;
-  int _resendSeconds = 0;
-  Timer? _resendTimer;
+  final _passwordCtrl = TextEditingController();
+  bool _loginMode = false;
 
   @override
   void dispose() {
-    _resendTimer?.cancel();
     _phoneCtrl.dispose();
-    _otpCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = widget.authState;
-    if (authState.isLoading || _sending) {
+    if (authState.isLoading) {
       return const Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: CircularProgressIndicator()),
@@ -151,95 +117,53 @@ class _OtpFormState extends State<_OtpForm> {
           _ErrorBanner(text: errorText),
           const SizedBox(height: 12),
         ],
-        if (!_otpSent) ...[
-          TextField(
-            controller: _phoneCtrl,
-            keyboardType: TextInputType.number,
-            maxLength: 11,
-            decoration: const InputDecoration(
-              labelText: 'মোবাইল নম্বর',
-              hintText: '01XXXXXXXXX',
-              prefixIcon: Icon(Icons.phone_android),
-            ),
+        TextField(
+          controller: _phoneCtrl,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'মোবাইল নম্বর',
+            hintText: '01XXXXXXXXX',
+            prefixIcon: Icon(Icons.phone_android),
           ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: () => _requestOtp(),
-            child: const Text('ওটিপি পাঠান'),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _passwordCtrl,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'Password',
+            prefixIcon: Icon(Icons.lock_outline),
           ),
-        ] else ...[
-          TextField(
-            controller: _otpCtrl,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            decoration: const InputDecoration(
-              labelText: 'ওটিপি কোড',
-              hintText: '6 ডিজিটের কোড',
-              prefixIcon: Icon(Icons.sms),
-            ),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: () => widget.notifier.loginWithOtp(
-              _phoneCtrl.text.trim(),
-              _otpCtrl.text.trim(),
-            ),
-            child: const Text('লগইন করুন'),
-          ),
-          const SizedBox(height: 4),
-          TextButton(
-            onPressed: (_resendSeconds > 0)
-                ? null
-                : () {
-                    _requestOtp();
-                    _startResendTimer();
-                  },
-            child: Text(
-              _resendSeconds > 0
-                  ? 'আবার পাঠান (${_resendSeconds}s)'
-                  : 'আবার ওটিপি পাঠান',
-            ),
-          ),
-        ],
+        ),
+        const SizedBox(height: 10),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(_loginMode ? 'লগইন করুন' : 'Account খুলুন'),
+        ),
+        TextButton(
+          onPressed: () => setState(() => _loginMode = !_loginMode),
+          child: Text(_loginMode
+              ? 'নতুন account খুলুন'
+              : 'আগের account-এ লগইন করুন'),
+        ),
       ],
     );
   }
 
-  Future<void> _requestOtp() async {
+  Future<void> _submit() async {
     final phone = _phoneCtrl.text.trim();
-    if (phone.length < 11) {
+    final password = _passwordCtrl.text;
+    if (phone.length < 11 || password.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('সঠিক মোবাইল নম্বর লিখুন')),
+        const SnackBar(content: Text('সঠিক নম্বর এবং কমপক্ষে ৪ অক্ষরের password দিন')),
       );
       return;
     }
-    setState(() => _sending = true);
-    try {
-      await widget.notifier.requestOtp(phone);
-      _otpSent = true;
-      _startResendTimer();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
-    } finally {
-      if (mounted) setState(() => _sending = false);
+    if (_loginMode) {
+      await widget.notifier.login(phone, password);
+    } else {
+      await widget.notifier.register(phone, password);
     }
-  }
-
-  void _startResendTimer() {
-    _resendTimer?.cancel();
-    _resendSeconds = 30;
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _resendSeconds--;
-        if (_resendSeconds <= 0) {
-          _resendTimer?.cancel();
-          _resendTimer = null;
-        }
-      });
-    });
   }
 }
 

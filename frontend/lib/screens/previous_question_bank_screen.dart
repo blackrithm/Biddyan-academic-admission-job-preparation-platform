@@ -16,17 +16,9 @@ class PreviousQuestionBankScreen extends StatefulWidget {
 
 class _PreviousQuestionBankScreenState
     extends State<PreviousQuestionBankScreen> {
-  static const _years = [
-    'সব বছর',
-    '43rd BCS',
-    '44th BCS',
-    '45th BCS',
-    'Primary 2022',
-    'Primary 2023',
-    'Bank Job 2023',
-  ];
+  static const String _allFilter = 'সব';
 
-  String _selectedYear = _years.first;
+  String _selectedFilter = _allFilter;
   String _search = '';
   late Future<List<Question>> _questions;
 
@@ -36,17 +28,52 @@ class _PreviousQuestionBankScreenState
     _questions = _loadQuestions();
   }
 
+  /// Loads the complete admin question bank (previous-year tags and
+  /// exam_type included) so the filter chips are built from live data —
+  /// new MCQs added by the admin show up here automatically.
   Future<List<Question>> _loadQuestions() {
-    return QuestionService(apiClient).list(
-      previousYear: _selectedYear == 'সব বছর' ? null : _selectedYear,
-    );
+    return QuestionService(apiClient).list();
   }
 
-  void _selectYear(String year) {
-    setState(() {
-      _selectedYear = year;
-      _questions = _loadQuestions();
-    });
+  /// Auto-builds the chips from admin-added MCQs: every unique previous-year
+  /// tag (e.g. "43rd BCS") and every unique exam_type (e.g. "SSC", "Varsity"),
+  /// with "সব" always first.
+  List<String> _filters(List<Question> questions) {
+    final filters = <String>[_allFilter];
+    final seen = <String>{_allFilter};
+    for (final question in questions) {
+      for (final year in question.previousYears) {
+        if (seen.add(year)) filters.add(year);
+      }
+      final type = question.examType;
+      if (type != null && type.isNotEmpty && seen.add(type)) {
+        filters.add(type);
+      }
+    }
+    return filters;
+  }
+
+  bool _matches(Question question, String filter) {
+    if (filter == _allFilter) return true;
+    return question.previousYears.contains(filter) ||
+        question.examType == filter;
+  }
+
+  /// Category (বিভাগ) summary for the currently selected exam type / year,
+  /// e.g. "বিভাগ: SSC (5টি), Varsity (3টি)".
+  String _categorySummary(List<Question> questions) {
+    if (questions.isEmpty) return 'কোনো প্রশ্ন নেই';
+    final counts = <String, int>{};
+    for (final question in questions) {
+      final topic =
+          (question.topicName ?? '').isEmpty ? 'অন্যান্য' : question.topicName!;
+      counts[topic] = (counts[topic] ?? 0) + 1;
+    }
+    return 'বিভাগ: ${counts.entries.map((e) => '${e.key} (${e.value}টি)').join(', ')}';
+  }
+
+  void _selectFilter(String filter) {
+    setState(() => _selectedFilter = filter);
   }
 
   @override
@@ -88,23 +115,6 @@ class _PreviousQuestionBankScreenState
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 42,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _years.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final year = _years[index];
-                return ChoiceChip(
-                  label: Text(year),
-                  selected: year == _selectedYear,
-                  onSelected: (_) => _selectYear(year),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 14),
           FutureBuilder<List<Question>>(
             future: _questions,
             builder: (context, snapshot) {
@@ -114,28 +124,67 @@ class _PreviousQuestionBankScreenState
               if (snapshot.hasError) {
                 return Text('প্রশ্ন লোড করা যায়নি: ${snapshot.error}');
               }
-              final questions = (snapshot.data ?? []).where((question) {
-                final matchesSearch = _search.isEmpty ||
-                    question.questionText
-                        .toLowerCase()
-                        .contains(_search.toLowerCase());
-                final matchesYear = _selectedYear == 'সব বছর' ||
-                    question.previousYears.contains(_selectedYear);
-                return matchesSearch && matchesYear;
+              final all = snapshot.data ?? const <Question>[];
+              final filters = _filters(all);
+              final query = _search.trim().toLowerCase();
+              final questions = all.where((question) {
+                final matchesSearch = query.isEmpty ||
+                    question.questionText.toLowerCase().contains(query) ||
+                    (question.topicName ?? '').toLowerCase().contains(query) ||
+                    (question.examType ?? '').toLowerCase().contains(query);
+                return matchesSearch && _matches(question, _selectedFilter);
               }).toList();
-              if (questions.isEmpty) {
-                return const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                        child: Text('কোনো পূর্ববর্তী প্রশ্ন পাওয়া যায়নি')),
-                  ),
-                );
-              }
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (var index = 0; index < questions.length; index++)
-                    _QuestionCard(index: index + 1, question: questions[index]),
+                  SizedBox(
+                    height: 42,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: filters.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final filter = filters[index];
+                        return ChoiceChip(
+                          label: Text(filter),
+                          selected: filter == _selectedFilter,
+                          onSelected: (_) => _selectFilter(filter),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '$questions.lengthটি প্রশ্ন — ফিল্টার: $_selectedFilter',
+                    style: const TextStyle(
+                        color: AppConstants.mutedText, fontSize: 12),
+                  ),
+                  if (_selectedFilter != _allFilter) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _categorySummary(questions),
+                      style: const TextStyle(
+                          color: AppConstants.mutedText, fontSize: 12),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  if (questions.isEmpty)
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                            child:
+                                Text('কোনো পূর্ববর্তী প্রশ্ন পাওয়া যায়নি')),
+                      ),
+                    )
+                  else
+                    Column(
+                      children: [
+                        for (var index = 0; index < questions.length; index++)
+                          _QuestionCard(
+                              index: index + 1, question: questions[index]),
+                      ],
+                    ),
                 ],
               );
             },
@@ -158,6 +207,12 @@ class _QuestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final category = question.topicName;
+    final examType = question.examType;
+    final questionSet = question.questionSet;
+    final hasMeta = (category != null && category.isNotEmpty) ||
+        (examType != null && examType.isNotEmpty) ||
+        (questionSet != null && questionSet.isNotEmpty);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -173,7 +228,22 @@ class _QuestionCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text('• $option'),
               ),
-            if (question.previousYears.isNotEmpty)
+            if (hasMeta) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                children: [
+                  if (category != null && category.isNotEmpty)
+                    Chip(label: Text('বিভাগ: $category')),
+                  if (examType != null && examType.isNotEmpty)
+                    Chip(label: Text('পরীক্ষা: $examType')),
+                  if (questionSet != null && questionSet.isNotEmpty)
+                    Chip(label: Text('Set: $questionSet')),
+                ],
+              ),
+            ],
+            if (question.previousYears.isNotEmpty) ...[
+              const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
                 children: [
@@ -181,6 +251,7 @@ class _QuestionCard extends StatelessWidget {
                     Chip(label: Text(year)),
                 ],
               ),
+            ],
           ],
         ),
       ),

@@ -4,6 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Drop existing tables if they exist to allow clean rebuilds
 DROP TABLE IF EXISTS user_answers CASCADE;
 DROP TABLE IF EXISTS user_exam_attempts CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS exam_questions CASCADE;
 DROP TABLE IF EXISTS exams CASCADE;
 DROP TABLE IF EXISTS questions CASCADE;
@@ -54,6 +55,9 @@ CREATE TABLE questions (
     explanation TEXT,
     previous_years TEXT[] DEFAULT '{}', -- e.g. ARRAY['43rd BCS', 'Primary 2022']
     difficulty_level VARCHAR(50) DEFAULT 'medium' CHECK (difficulty_level IN ('easy', 'medium', 'hard')),
+    exam_type VARCHAR(100),
+    question_set VARCHAR(100),
+    source VARCHAR(100) DEFAULT 'admin',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -61,6 +65,42 @@ CREATE TABLE questions (
 CREATE INDEX idx_questions_topic_id ON questions(topic_id);
 -- GIN (Generalized Inverted Index) for array intersections (millions of rows lookups on tags in microseconds)
 CREATE INDEX idx_questions_previous_years ON questions USING gin(previous_years);
+CREATE INDEX idx_questions_exam_type_set ON questions(exam_type, question_set);
+
+-- Demo question-bank content
+INSERT INTO topics (id, name, parent_id) VALUES
+    ('10000000-0000-4000-8000-000000000001', 'বাংলা ভাষা ও সাহিত্য',
+      (SELECT id FROM topics WHERE name = 'BCS' LIMIT 1)),
+    ('10000000-0000-4000-8000-000000000002', 'বাংলাদেশ বিষয়াবলি',
+      (SELECT id FROM topics WHERE name = 'BCS' LIMIT 1)),
+    ('10000000-0000-4000-8000-000000000003', 'English Grammar',
+      (SELECT id FROM topics WHERE name = 'BCS' LIMIT 1)),
+    ('10000000-0000-4000-8000-000000000004', 'গণিত',
+      (SELECT id FROM topics WHERE name = 'SSC' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO questions (
+    id, topic_id, question_text, option_a, option_b, option_c, option_d,
+    correct_option, explanation, previous_years, difficulty_level,
+    exam_type, question_set, source
+) VALUES
+    ('20000000-0000-4000-8000-000000000001',
+     '10000000-0000-4000-8000-000000000001',
+     'বাংলা ভাষার আদি নিদর্শন কোনটি?', 'চর্যাপদ', 'শ্রীকৃষ্ণকীর্তন', 'মঙ্গলকাব্য', 'গীতাঞ্জলি',
+     'A', 'চর্যাপদ বাংলা ভাষার প্রাচীনতম নিদর্শন।', ARRAY['43rd BCS'], 'easy', 'BCS প্রিলিমিনারি', 'Set A', 'demo'),
+    ('20000000-0000-4000-8000-000000000002',
+     '10000000-0000-4000-8000-000000000002',
+     'বাংলাদেশের জাতীয় সংসদ ভবনের স্থপতি কে?', 'এফ আর খান', 'লুই আই কান', 'মাজহারুল ইসলাম', 'পল রুডলফ',
+     'B', 'জাতীয় সংসদ ভবনের নকশা করেন লুই আই কান।', ARRAY['44th BCS'], 'easy', 'BCS প্রিলিমিনারি', 'Set A', 'demo'),
+    ('20000000-0000-4000-8000-000000000003',
+     '10000000-0000-4000-8000-000000000003',
+     'Choose the correct article: He is ___ honest person.', 'a', 'an', 'the', 'no article',
+     'B', 'Honest begins with a vowel sound, so an is correct.', ARRAY['Bank Job 2023'], 'easy', 'Bank Job', 'Set B', 'demo'),
+    ('20000000-0000-4000-8000-000000000004',
+     '10000000-0000-4000-8000-000000000004',
+     'একটি সংখ্যার ২৫% কত?', 'সংখ্যাটির ১/২', 'সংখ্যাটির ১/৩', 'সংখ্যাটির ১/৪', 'সংখ্যাটির ১/৫',
+     'C', '২৫% = ২৫/১০০ = ১/৪।', ARRAY['SSC 2024'], 'easy', 'SSC গণিত', 'Set A', 'demo')
+ON CONFLICT (id) DO NOTHING;
 
 -- 3. Exams Table
 CREATE TABLE exams (
@@ -78,6 +118,18 @@ CREATE TABLE exams (
 
 CREATE INDEX idx_exams_is_live ON exams(is_live, starts_at);
 
+-- Demo scheduled exam
+INSERT INTO exams (
+    id, title, topic_id, total_marks, negative_marking_per_wrong,
+    duration_minutes, is_live, starts_at, ends_at
+) VALUES (
+    '30000000-0000-4000-8000-000000000001',
+    'ডেমো BCS প্রিলিমিনারি মডেল টেস্ট',
+    (SELECT id FROM topics WHERE name = 'BCS' LIMIT 1),
+    4, 0.25, 10, true, NOW(), NOW() + INTERVAL '30 days'
+)
+ON CONFLICT (id) DO NOTHING;
+
 -- 4. Exam Questions Junction Table
 CREATE TABLE exam_questions (
     exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
@@ -86,6 +138,13 @@ CREATE TABLE exam_questions (
 );
 
 CREATE INDEX idx_exam_questions_question_id ON exam_questions(question_id);
+
+INSERT INTO exam_questions (exam_id, question_id) VALUES
+    ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001'),
+    ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002'),
+    ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000003'),
+    ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000004')
+ON CONFLICT DO NOTHING;
 
 -- 5. User Exam Attempts (History and Persistent Analytics)
 CREATE TABLE user_exam_attempts (
@@ -102,6 +161,17 @@ CREATE TABLE user_exam_attempts (
 CREATE INDEX idx_user_exam_attempts_user_id ON user_exam_attempts(user_id);
 -- Compound Index covering scores and time - ensures rapid pagination of high-scores fallback directly in DB
 CREATE INDEX idx_attempts_leaderboard_fallback ON user_exam_attempts(exam_id, score DESC, submitted_at ASC);
+
+-- Persistent application users
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    phone_number VARCHAR(30) UNIQUE,
+    email VARCHAR(255) UNIQUE,
+    display_name VARCHAR(255) NOT NULL DEFAULT 'Biddyan User',
+    password_hash TEXT,
+    role VARCHAR(30) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- 6. User Answers (Granular item analysis)
 CREATE TABLE user_answers (
