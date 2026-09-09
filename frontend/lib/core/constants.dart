@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class AppConstants {
   AppConstants._();
@@ -11,10 +12,20 @@ class AppConstants {
   /// Web build served by Nginx uses a relative path (`/api`) so that it is
   /// reverse-proxied to the Node.js container. Mobile builds use the
   /// absolute localhost URL of the Docker Compose backend.
-  static const String apiBaseUrl = String.fromEnvironment(
-    'BIDDYAN_API_URL',
-    defaultValue: '/api',
-  );
+  static String get apiBaseUrl {
+    const configured = String.fromEnvironment('BIDDYAN_API_URL');
+    if (configured.isNotEmpty) return configured;
+
+    // `flutter run -d chrome` serves the app from a dev port, not through the
+    // production reverse proxy, so point local web development at the API.
+    if (kIsWeb &&
+        (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') &&
+        Uri.base.port != 80 &&
+        Uri.base.port != 443) {
+      return 'http://localhost:5000/api';
+    }
+    return '/api';
+  }
 
   /// Brand primary emerald/teal color used across all screens.
   static const Color primary = Color(0xFF006A4E);

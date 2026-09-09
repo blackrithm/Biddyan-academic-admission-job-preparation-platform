@@ -37,6 +37,11 @@ flutter pub get
 flutter run -d chrome
 ```
 
+During local Chrome development, the Flutter client automatically connects to
+the backend at `http://localhost:5000/api`. For a different backend URL, pass
+it with `--dart-define=BIDDYAN_API_URL=https://example.com/api`. Production
+web builds continue to use the `/api` reverse-proxy path by default.
+
 If the backend is unavailable, the frontend uses local demo data. The login
 screen provides Student and Admin account options. For the offline OTP flow,
 use:
