@@ -3,8 +3,20 @@ import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/brand_navigation.dart';
 
+class SubjectPracticeArgs {
+  const SubjectPracticeArgs({
+    required this.subject,
+    required this.questionSets,
+  });
+
+  final String subject;
+  final List<String> questionSets;
+}
+
 class SubjectPracticeScreen extends StatelessWidget {
-  const SubjectPracticeScreen({super.key});
+  const SubjectPracticeScreen({super.key, this.args});
+
+  final SubjectPracticeArgs? args;
 
   static const _sections = [
     ('অধ্যায়ভিত্তিক অনুশীলন', 'একেক অধ্যায়', Color(0xFF29B6E6)),
@@ -19,7 +31,7 @@ class SubjectPracticeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppConstants.background,
       appBar: AppBar(
-        title: const Text('ইন্টারমিডিয়েট সামষ্টিক অর্থনীতি',
+        title: Text(args?.subject ?? 'বিষয় অনুশীলন',
             overflow: TextOverflow.ellipsis),
       ),
       body: ListView(
@@ -30,7 +42,9 @@ class SubjectPracticeScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
-                'জাতীয় বিশ্ববিদ্যালয়ের পরীক্ষায় ৮০ নম্বরের লিখিত অংশে ক-বিভাগে ১০টি অতি সংক্ষিপ্ত (১০×১ = ১০), খ-বিভাগে ৫টি সংক্ষিপ্ত (৫×৪ = ২০) ও গ-বিভাগে ৫টি রচনামূলক প্রশ্ন (১০×৫ = ৫০) লিখতে হয়। ইনকোর্স ও উপস্থিতি মিলে বাকি ২০ নম্বর দেওয়া হয়। লিখিত ও ইনকোর্স পরীক্ষার নম্বর সমন্বয়ভাবে পাশের জন্য গণনা করা হয়।',
+                args == null
+                    ? 'বিষয়ভিত্তিক প্রশ্ন অনুশীলন করুন।'
+                    : '${args!.subject} বিষয়ের জন্য তৈরি প্রশ্ন সেটগুলো থেকে অনুশীলন করুন।',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -41,14 +55,15 @@ class SubjectPracticeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          for (final section in _sections)
+          for (final section in (args?.questionSets ??
+              _sections.map((section) => section.$1).toList()))
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _PracticeCard(
-                title: section.$1,
-                tag: section.$2,
-                color: section.$3,
-                onTap: () => _showComingSoon(context, section.$1),
+                title: section,
+                tag: 'প্রশ্ন সেট',
+                color: const Color(0xFF29B6E6),
+                onTap: () => _showComingSoon(context, section),
               ),
             ),
         ],

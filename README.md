@@ -32,7 +32,7 @@ frontend/  Flutter Web, Android, and iOS client
 ```powershell
 cd frontend
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:5000/api
 ```
 
 If the backend is unavailable, the frontend uses local demo data. For the
@@ -51,7 +51,10 @@ npm run build
 npm start
 ```
 
-The API listens on port `5000` by default.
+The API listens on port `5000` by default. The Flutter client connects to
+`http://localhost:5000/api` during local development. For a deployed API, pass
+a different value with
+`--dart-define=API_BASE_URL=https://your-domain/api`.
 
 ## Run the full stack with Docker
 

@@ -40,7 +40,11 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/subject-practice',
-      builder: (context, state) => const SubjectPracticeScreen(),
+      builder: (context, state) => SubjectPracticeScreen(
+        args: state.extra is SubjectPracticeArgs
+            ? state.extra as SubjectPracticeArgs
+            : null,
+      ),
     ),
     GoRoute(
       path: '/subject-catalog',

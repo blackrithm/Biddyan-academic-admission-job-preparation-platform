@@ -8,13 +8,12 @@ class AppConstants {
 
   /// Backend REST API base URL.
   ///
-  /// Web build served by Nginx uses a relative path (`/api`) so that it is
-  /// reverse-proxied to the Node.js container. Mobile builds use the
-  /// absolute localhost URL of the Docker Compose backend.
-  static final String apiBaseUrl =
-      const bool.fromEnvironment('dart.vm.product')
-          ? 'https://biddyan.test/api'
-          : '/api';
+  /// Override this for deployed builds with:
+  /// `--dart-define=API_BASE_URL=https://example.com/api`.
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:5000/api',
+  );
 
   /// Brand primary emerald/teal color used across all screens.
   static const Color primary = Color(0xFF006A4E);

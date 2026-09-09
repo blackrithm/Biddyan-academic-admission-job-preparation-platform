@@ -7,6 +7,7 @@ import '../core/constants.dart';
 import '../widgets/brand_navigation.dart';
 import 'home_screen.dart';
 import 'home_sections.dart';
+import 'subject_practice_screen.dart';
 
 class MobileDashboard extends ConsumerStatefulWidget {
   const MobileDashboard({super.key});
@@ -112,25 +113,7 @@ class _DashboardHome extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _FeatureGrid(
-          items: const [
-            ('ফ্রি সাপ্তাহিক মডেল টেস্ট', FontAwesomeIcons.gift),
-            ('BCS প্রস্তুতি', FontAwesomeIcons.buildingColumns),
-            ('নতুনদের BCS প্রস্তুতি', FontAwesomeIcons.medal),
-            ('প্রিলি ও লিখিত প্রস্তুতি', FontAwesomeIcons.penToSquare),
-            ('সাবজেক্ট কেয়ার', FontAwesomeIcons.bookOpen),
-            ('জব সল্যুশন', FontAwesomeIcons.briefcase),
-            ('ব্যাংক নিয়োগ প্রস্তুতি', FontAwesomeIcons.moneyBillTransfer),
-            ('শিক্ষক নিবন্ধন', FontAwesomeIcons.graduationCap),
-            ('গ্রেড প্রস্তুতি', FontAwesomeIcons.clipboardCheck),
-            ('বার কাউন্সিল', FontAwesomeIcons.scaleBalanced),
-          ],
-          onTap: (title) {
-            if (title == 'BCS প্রস্তুতি') {
-              context.push('/subject-practice');
-            }
-          },
-        ),
+        const _ExamCategoryTabs(),
         const SizedBox(height: 16),
         _SectionTitle(title: 'স্টাডি সেকশন', color: AppConstants.primary),
         const SizedBox(height: 8),
@@ -185,50 +168,179 @@ class _SectionTitle extends StatelessWidget {
       );
 }
 
-class _FeatureGrid extends StatelessWidget {
-  const _FeatureGrid({required this.items, required this.onTap});
-  final List<(String, IconData)> items;
-  final ValueChanged<String> onTap;
+class _ExamCategoryTabs extends StatefulWidget {
+  const _ExamCategoryTabs();
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = constraints.maxWidth < 560 ? 2 : 3;
-          final width = (constraints.maxWidth - (columns - 1) * 10) / columns;
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final item in items)
-                SizedBox(
-                  width: width,
-                  height: 78,
-                  child: Card(
-                    child: InkWell(
-                      onTap: () => onTap(item.$1),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Row(
-                          children: [
-                            FaIcon(item.$2,
-                                color: AppConstants.primary, size: 22),
-                            const SizedBox(width: 6),
-                            Expanded(
-                                child: Text(item.$1,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis)),
-                          ],
-                        ),
+  State<_ExamCategoryTabs> createState() => _ExamCategoryTabsState();
+}
+
+class _ExamCategoryTabsState extends State<_ExamCategoryTabs> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final category = _examCategories[_selectedIndex];
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (var index = 0; index < _examCategories.length; index++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(_examCategories[index].name),
+                        selected: index == _selectedIndex,
+                        onSelected: (_) =>
+                            setState(() => _selectedIndex = index),
                       ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${category.name} বিষয় ও প্রশ্নব্যাংক',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            for (final subject in category.subjects)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SubjectQuestionBankCard(
+                  subject: subject,
+                  onTap: () => context.push(
+                    '/subject-practice',
+                    extra: SubjectPracticeArgs(
+                      subject: subject.name,
+                      questionSets: subject.questionSets,
                     ),
                   ),
                 ),
-            ],
-          );
-        },
-      );
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+class _SubjectQuestionBankCard extends StatelessWidget {
+  const _SubjectQuestionBankCard({
+    required this.subject,
+    required this.onTap,
+  });
+
+  final _ExamSubject subject;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF6F8FA),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      subject.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 20),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final questionSet in subject.questionSets)
+                    Chip(
+                      avatar: const Icon(Icons.quiz_outlined, size: 16),
+                      label: Text(questionSet),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExamCategory {
+  const _ExamCategory(this.name, this.subjects);
+
+  final String name;
+  final List<_ExamSubject> subjects;
+}
+
+class _ExamSubject {
+  const _ExamSubject(this.name, this.questionSets);
+
+  final String name;
+  final List<String> questionSets;
+}
+
+const _examCategories = [
+  _ExamCategory('HSC', [
+    _ExamSubject('বাংলা', ['HSC বাংলা ১ম পত্র', 'HSC বাংলা ২য় পত্র']),
+    _ExamSubject('ইংরেজি', ['HSC English 1st Paper', 'HSC English 2nd Paper']),
+    _ExamSubject('গণিত', ['HSC গণিত অধ্যায়ভিত্তিক']),
+    _ExamSubject(
+        'পদার্থবিজ্ঞান', ['ভৌত বিজ্ঞান', 'HSC পদার্থবিজ্ঞান মডেল টেস্ট']),
+    _ExamSubject('রসায়ন', ['HSC রসায়ন অধ্যায়ভিত্তিক']),
+  ]),
+  _ExamCategory('SSC', [
+    _ExamSubject('বাংলা', ['SSC বাংলা অধ্যায়ভিত্তিক']),
+    _ExamSubject('ইংরেজি', ['SSC English Grammar']),
+    _ExamSubject('গণিত', ['SSC গণিত অধ্যায়ভিত্তিক']),
+    _ExamSubject('সাধারণ বিজ্ঞান', ['SSC সাধারণ বিজ্ঞান']),
+  ]),
+  _ExamCategory('ভার্সিটি', [
+    _ExamSubject('বাংলা', ['বিশ্ববিদ্যালয় ভর্তি বাংলা']),
+    _ExamSubject('ইংরেজি', ['বিশ্ববিদ্যালয় ভর্তি ইংরেজি']),
+    _ExamSubject('সাধারণ জ্ঞান', ['বিশ্ববিদ্যালয় ভর্তি সাধারণ জ্ঞান']),
+  ]),
+  _ExamCategory('মেডিকেল', [
+    _ExamSubject('জীববিজ্ঞান', ['মেডিকেল জীববিজ্ঞান']),
+    _ExamSubject('পদার্থবিজ্ঞান', ['মেডিকেল পদার্থবিজ্ঞান']),
+    _ExamSubject('রসায়ন', ['মেডিকেল রসায়ন']),
+  ]),
+  _ExamCategory('ইঞ্জিনিয়ারিং', [
+    _ExamSubject('গণিত', ['ইঞ্জিনিয়ারিং গণিত']),
+    _ExamSubject('পদার্থবিজ্ঞান', ['ইঞ্জিনিয়ারিং পদার্থবিজ্ঞান']),
+    _ExamSubject('রসায়ন', ['ইঞ্জিনিয়ারিং রসায়ন']),
+  ]),
+  _ExamCategory('বিসিএস', [
+    _ExamSubject('বাংলা', ['বিসিএস বাংলা প্রিলিমিনারি']),
+    _ExamSubject('ইংরেজি', ['বিসিএস ইংরেজি প্রিলিমিনারি']),
+    _ExamSubject('সাধারণ জ্ঞান', ['বিসিএস বাংলাদেশ ও আন্তর্জাতিক']),
+  ]),
+  _ExamCategory('ব্যাংক', [
+    _ExamSubject('বাংলা', ['ব্যাংক বাংলা প্রশ্নব্যাংক']),
+    _ExamSubject('ইংরেজি', ['ব্যাংক English Question Bank']),
+    _ExamSubject('গণিত', ['ব্যাংক গণিত প্রশ্নব্যাংক']),
+  ]),
+];
 
 class _NoticeBoard extends StatelessWidget {
   const _NoticeBoard();
