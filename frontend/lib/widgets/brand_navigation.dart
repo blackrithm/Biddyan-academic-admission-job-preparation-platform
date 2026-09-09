@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 class BrandBottomNavigation extends StatelessWidget {
   const BrandBottomNavigation({
@@ -10,6 +11,21 @@ class BrandBottomNavigation extends StatelessWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  static void navigate(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        context.go('/');
+      case 1:
+        context.go('/subject-catalog');
+      case 2:
+        context.go('/exam-calendar');
+      case 3:
+        context.go('/routine');
+      case 4:
+        context.go('/profile');
+    }
+  }
 
   @override
   Widget build(BuildContext context) => NavigationBar(

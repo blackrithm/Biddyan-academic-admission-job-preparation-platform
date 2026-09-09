@@ -14,6 +14,13 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const _categories = <({String title, IconData icon})>[
+    
+    (title: 'SSC', icon: Icons.school),
+    (title: 'HSC', icon: Icons.account_balance),
+    (title: 'Varsity', icon: Icons.school),
+    (title: 'Medical', icon: Icons.account_balance),
+    (title: 'Engineering', icon: Icons.school),
+    (title: 'Agriculture', icon: Icons.account_balance),
     (title: 'BCS প্রস্তুতি', icon: Icons.school),
     (title: 'ব্যাংক জব', icon: Icons.account_balance),
     (title: 'সরকারি চাকরি', icon: Icons.work),
@@ -29,7 +36,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('বিদ্যান'),
+        title: const Text('বিদ্বান'),
         actions: [
           if (authState.isLoggedIn)
             IconButton(

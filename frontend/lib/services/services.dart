@@ -80,13 +80,18 @@ class QuestionService {
 
   final ApiClient client;
 
-  Future<List<Question>> list({String? topicId, String? search}) async {
+  Future<List<Question>> list({
+    String? topicId,
+    String? search,
+    String? previousYear,
+  }) async {
     try {
       final json = await client.get(
         'questions',
         query: {
           if (topicId != null) 'topicId': topicId,
           if (search != null) 'search': search,
+          if (previousYear != null) 'previousYear': previousYear,
         },
       );
       return (json as List<dynamic>)

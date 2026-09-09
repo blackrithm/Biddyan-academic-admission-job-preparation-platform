@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../widgets/brand_navigation.dart';
@@ -7,11 +8,13 @@ class SubjectPracticeScreen extends StatelessWidget {
   const SubjectPracticeScreen({super.key});
 
   static const _sections = [
+    ('Previous Question Bank', 'বিগত বছরের প্রশ্ন', Color(0xFF7B1FA2)),
     ('অধ্যায়ভিত্তিক অনুশীলন', 'একেক অধ্যায়', Color(0xFF29B6E6)),
     ('সম্পূর্ণ সিলেবাস অনুশীলন', 'সবগুলো অধ্যায়', Color(0xFF18B447)),
     ('নির্বাচনী পরীক্ষা প্রস্তুতি', 'কমনের নিশ্চয়তা', Color(0xFF29B6E6)),
     ('ফাইনাল পরীক্ষা প্রস্তুতি', 'কমনের নিশ্চয়তা', Color(0xFF18B447)),
     ('পরীক্ষার আগে শর্ট সাজেশন', 'কমনের নিশ্চয়তা', Color(0xFFF39C12)),
+    
   ];
 
   @override
@@ -19,28 +22,11 @@ class SubjectPracticeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppConstants.background,
       appBar: AppBar(
-        title: const Text('ইন্টারমিডিয়েট সামষ্টিক অর্থনীতি',
-            overflow: TextOverflow.ellipsis),
+        title: const Text('Exam Type'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          Card(
-            color: Colors.white,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                'জাতীয় বিশ্ববিদ্যালয়ের পরীক্ষায় ৮০ নম্বরের লিখিত অংশে ক-বিভাগে ১০টি অতি সংক্ষিপ্ত (১০×১ = ১০), খ-বিভাগে ৫টি সংক্ষিপ্ত (৫×৪ = ২০) ও গ-বিভাগে ৫টি রচনামূলক প্রশ্ন (১০×৫ = ৫০) লিখতে হয়। ইনকোর্স ও উপস্থিতি মিলে বাকি ২০ নম্বর দেওয়া হয়। লিখিত ও ইনকোর্স পরীক্ষার নম্বর সমন্বয়ভাবে পাশের জন্য গণনা করা হয়।',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  height: 1.7,
-                  color: Color(0xFF555555),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
           for (final section in _sections)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -48,14 +34,20 @@ class SubjectPracticeScreen extends StatelessWidget {
                 title: section.$1,
                 tag: section.$2,
                 color: section.$3,
-                onTap: () => _showComingSoon(context, section.$1),
+                onTap: () {
+                  if (section.$1 == 'Previous Question Bank') {
+                    context.push('/previous-question-bank');
+                  } else {
+                    _showComingSoon(context, section.$1);
+                  }
+                },
               ),
             ),
         ],
       ),
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 2,
-        onSelected: (_) {},
+        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
   }

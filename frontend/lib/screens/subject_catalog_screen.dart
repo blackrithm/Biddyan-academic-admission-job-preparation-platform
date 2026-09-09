@@ -93,6 +93,20 @@ class _SubjectCatalogScreenState extends State<SubjectCatalogScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    Card(
+                      color: AppConstants.primary.withValues(alpha: 0.08),
+                      child: ListTile(
+                        leading: const Icon(Icons.history_edu,
+                            color: AppConstants.primary),
+                        title: const Text('Previous Question Bank',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle:
+                            const Text('বিগত বছরের প্রশ্ন দেখে অনুশীলন করুন'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/previous-question-bank'),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -131,7 +145,7 @@ class _SubjectCatalogScreenState extends State<SubjectCatalogScreen> {
       ),
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 2,
-        onSelected: (_) {},
+        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
   }

@@ -33,7 +33,7 @@ class AdminScreen extends ConsumerWidget {
       body: const _TabbedAdmin(),
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 4,
-        onSelected: (_) {},
+        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
   }

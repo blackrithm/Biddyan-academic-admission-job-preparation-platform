@@ -74,7 +74,7 @@ class _ExamRoomScreenState extends ConsumerState<ExamRoomScreen> {
       ),
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 2,
-        onSelected: (_) {},
+        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
   }

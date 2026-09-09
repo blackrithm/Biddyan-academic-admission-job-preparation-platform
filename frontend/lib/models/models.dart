@@ -100,12 +100,10 @@ class Question {
       optionD: json['option_d'] as String? ?? '',
       correctOption: json['correct_option'] as String?,
       explanation: json['explanation'] as String?,
-      previousYears:
-          (json['previous_years'] as List<dynamic>? ?? const [])
-              .map((e) => e as String)
-              .toList(),
-      difficultyLevel:
-          (json['difficulty_level'] as String?) ?? 'medium',
+      previousYears: (json['previous_years'] as List<dynamic>? ?? const [])
+          .map((e) => e as String)
+          .toList(),
+      difficultyLevel: (json['difficulty_level'] as String?) ?? 'medium',
       topicName: json['topic_name'] as String?,
     );
   }
@@ -121,6 +119,8 @@ class Exam {
     required this.isLive,
     this.topicId,
     this.topicName,
+    this.startsAt,
+    this.endsAt,
     this.questions = const [],
   });
 
@@ -132,14 +132,18 @@ class Exam {
   final double negativeMarking;
   final int durationMinutes;
   final bool isLive;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
   final List<Question> questions;
 
-    factory Exam.fromJson(Map<String, dynamic> json) {
+  factory Exam.fromJson(Map<String, dynamic> json) {
     return Exam(
       id: json['id'] as String,
       title: json['title'] as String,
       topicId: json['topic_id'] as String?,
       topicName: json['topic_name'] as String?,
+      startsAt: _parseDate(json['starts_at']),
+      endsAt: _parseDate(json['ends_at']),
       totalMarks: double.parse((json['total_marks'] ?? 0).toString()),
       negativeMarking:
           double.parse((json['negative_marking_per_wrong'] ?? 0).toString()),
@@ -160,6 +164,8 @@ class Exam {
     double? negativeMarking,
     int? durationMinutes,
     bool? isLive,
+    DateTime? startsAt,
+    DateTime? endsAt,
     List<Question>? questions,
   }) {
     return Exam(
@@ -171,9 +177,14 @@ class Exam {
       negativeMarking: negativeMarking ?? this.negativeMarking,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       isLive: isLive ?? this.isLive,
+      startsAt: startsAt ?? this.startsAt,
+      endsAt: endsAt ?? this.endsAt,
       questions: questions ?? this.questions,
     );
   }
+
+  static DateTime? _parseDate(dynamic value) =>
+      value is String ? DateTime.tryParse(value) : null;
 }
 
 class LeaderboardEntry {
@@ -223,10 +234,9 @@ class AttemptResult {
       wrongCount: json['wrongCount'] as int,
       rank: json['rank'] as int?,
       totalExaminees: json['totalExaminees'] as int? ?? 0,
-      breakdown:
-          (json['breakdown'] as List<dynamic>? ?? const [])
-              .map((e) => AnswerBreakdown.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      breakdown: (json['breakdown'] as List<dynamic>? ?? const [])
+          .map((e) => AnswerBreakdown.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

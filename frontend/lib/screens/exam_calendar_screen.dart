@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../core/constants.dart';
+import '../widgets/brand_navigation.dart';
 
 enum ExamTab { live, upcoming, archive }
 
@@ -107,7 +108,10 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
             for (final exam in filtered) _ExamCard(exam: exam),
         ],
       ),
-      bottomNavigationBar: const _ExamBottomNavigation(),
+      bottomNavigationBar: BrandBottomNavigation(
+        selectedIndex: 2,
+        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
+      ),
     );
   }
 
@@ -119,53 +123,6 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
       initialDate: _selectedDate,
     );
     if (date != null) setState(() => _selectedDate = date);
-  }
-}
-
-class _ExamBottomNavigation extends StatelessWidget {
-  const _ExamBottomNavigation();
-
-  @override
-  Widget build(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: 2,
-      onDestinationSelected: (index) {
-        if (index == 0) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        } else if (index == 4) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('প্রোফাইল শীঘ্রই যুক্ত হবে।')),
-          );
-        }
-      },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'হোম',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.handshake_outlined),
-          selectedIcon: Icon(Icons.handshake),
-          label: 'আমার সেকশন',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.assignment_outlined),
-          selectedIcon: Icon(Icons.assignment),
-          label: 'পরীক্ষা',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.edit_calendar_outlined),
-          selectedIcon: Icon(Icons.edit_calendar),
-          label: 'রুটিন',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'প্রোফাইল',
-        ),
-      ],
-    );
   }
 }
 
@@ -281,7 +238,10 @@ class _ExamCard extends StatelessWidget {
                 const Icon(Icons.calendar_today,
                     size: 16, color: AppConstants.mutedText),
                 const SizedBox(width: 5),
-                Text(_formatDate(exam.date)),
+                const Icon(Icons.access_time,
+                    size: 16, color: AppConstants.mutedText),
+                const SizedBox(width: 5),
+                Text(_formatDateTime(exam.date)),
                 const SizedBox(width: 16),
                 const Icon(Icons.people_outline,
                     size: 17, color: AppConstants.mutedText),
@@ -303,8 +263,13 @@ class _ExamCard extends StatelessWidget {
     );
   }
 
-  static String _formatDate(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  static String _formatDateTime(DateTime date) {
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')} '
+        '$hour:${date.minute.toString().padLeft(2, '0')} $period';
+  }
 
   static void _showAction(BuildContext context, String action) {
     ScaffoldMessenger.of(context)

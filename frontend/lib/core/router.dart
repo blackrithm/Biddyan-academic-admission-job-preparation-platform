@@ -11,6 +11,8 @@ import '../screens/mobile_dashboard.dart';
 import '../screens/result_screen.dart';
 import '../screens/subject_practice_screen.dart';
 import '../screens/subject_catalog_screen.dart';
+import '../screens/app_section_screen.dart';
+import '../screens/previous_question_bank_screen.dart';
 import '../services/services.dart';
 
 /// Declarative GoRouter configuration.
@@ -47,8 +49,30 @@ final router = GoRouter(
       builder: (context, state) => const SubjectCatalogScreen(),
     ),
     GoRoute(
+      path: '/previous-question-bank',
+      builder: (context, state) => const PreviousQuestionBankScreen(),
+    ),
+    GoRoute(
       path: '/exam-calendar',
       builder: (context, state) => const ExamCalendarScreen(),
+    ),
+    GoRoute(
+      path: '/routine',
+      builder: (context, state) => const AppSectionScreen(
+        title: 'রুটিন',
+        message: 'আপনার পড়াশোনার রুটিন এখানে দেখা যাবে।',
+        icon: Icons.edit_calendar,
+        selectedIndex: 3,
+      ),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const AppSectionScreen(
+        title: 'প্রোফাইল',
+        message: 'আপনার প্রোফাইল ও সেটিংস এখানে দেখা যাবে।',
+        icon: Icons.person,
+        selectedIndex: 4,
+      ),
     ),
   ],
 );

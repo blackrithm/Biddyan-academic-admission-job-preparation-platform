@@ -17,6 +17,7 @@ class MobileDashboard extends ConsumerStatefulWidget {
 
 class _MobileDashboardState extends ConsumerState<MobileDashboard> {
   int _selectedIndex = 0;
+  bool _drawerOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +32,15 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
       appBar: AppBar(
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: Icon(_drawerOpen ? Icons.close : Icons.menu),
+            tooltip: _drawerOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন',
+            onPressed: () {
+              if (_drawerOpen) {
+                Navigator.of(context).pop();
+              } else {
+                Scaffold.of(context).openDrawer();
+              }
+            },
           ),
         ),
         title: Image.asset('assets/biddyan_logo.png', height: 44),
@@ -53,6 +61,7 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
           setState(() => _selectedIndex = index);
         },
       ),
+      onDrawerChanged: (isOpen) => setState(() => _drawerOpen = isOpen),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -62,16 +71,8 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
         ),
       ),
       bottomNavigationBar: BrandBottomNavigation(
-        selectedIndex: _selectedIndex == 0 ? 0 : 0,
-        onSelected: (index) {
-          if (index == 0) {
-            setState(() => _selectedIndex = 0);
-          } else if (index == 2) {
-            context.push('/exam-calendar');
-          } else if (index == 4) {
-            setState(() => _selectedIndex = 2);
-          }
-        },
+        selectedIndex: 0,
+        onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
   }
@@ -114,20 +115,27 @@ class _DashboardHome extends StatelessWidget {
         const SizedBox(height: 8),
         _FeatureGrid(
           items: const [
-            ('ফ্রি সাপ্তাহিক মডেল টেস্ট', FontAwesomeIcons.gift),
+            ('SSC', FontAwesomeIcons.school),
+            ('HSC', FontAwesomeIcons.school),
+            ('Varsity', FontAwesomeIcons.buildingColumns),
+            ('Medical', FontAwesomeIcons.userDoctor),
+            ('Engineering', FontAwesomeIcons.gears),
+            ('Agriculture', FontAwesomeIcons.seedling),
             ('BCS প্রস্তুতি', FontAwesomeIcons.buildingColumns),
-            ('নতুনদের BCS প্রস্তুতি', FontAwesomeIcons.medal),
-            ('প্রিলি ও লিখিত প্রস্তুতি', FontAwesomeIcons.penToSquare),
-            ('সাবজেক্ট কেয়ার', FontAwesomeIcons.bookOpen),
-            ('জব সল্যুশন', FontAwesomeIcons.briefcase),
-            ('ব্যাংক নিয়োগ প্রস্তুতি', FontAwesomeIcons.moneyBillTransfer),
             ('শিক্ষক নিবন্ধন', FontAwesomeIcons.graduationCap),
-            ('গ্রেড প্রস্তুতি', FontAwesomeIcons.clipboardCheck),
             ('বার কাউন্সিল', FontAwesomeIcons.scaleBalanced),
+            ('ব্যাংক জব', FontAwesomeIcons.buildingColumns),
+            ('সরকারি চাকরি', FontAwesomeIcons.landmark),
+            ('নন-ক্যাডার', FontAwesomeIcons.userTie),
+            ('ভর্তি পরীক্ষা', FontAwesomeIcons.graduationCap),
           ],
           onTap: (title) {
             if (title == 'BCS প্রস্তুতি') {
               context.push('/subject-practice');
+            } else if (title == 'প্রিলি ও লিখিত প্রস্তুতি') {
+              context.push('/previous-question-bank');
+            } else if (title != 'ফ্রি সাপ্তাহিক মডেল টেস্ট') {
+              context.push('/subject-catalog');
             }
           },
         ),
@@ -230,45 +238,135 @@ class _FeatureGrid extends StatelessWidget {
       );
 }
 
-class _NoticeBoard extends StatelessWidget {
+class _NoticeBoard extends StatefulWidget {
   const _NoticeBoard();
+
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(16),
+  State<_NoticeBoard> createState() => _NoticeBoardState();
+}
+
+class _NoticeBoardState extends State<_NoticeBoard> {
+  final _notices = <({String title, String body, String date, bool unread})>[
+    (
+      title: 'আজই শেষ দিন!',
+      body:
+          'Rapid Discount অফারের আজই শেষ দিন! Live MCQ প্রিমিয়াম প্যাকেজে বিশেষ ছাড়।',
+      date: 'আজ, ১০:৩০ AM',
+      unread: true,
+    ),
+    (
+      title: 'BCS প্রস্তুতি নতুন রুটিন',
+      body:
+          'বিসিএস প্রিলি প্রস্তুতির জন্য গুরুত্বপূর্ণ টপিকের উপর নতুন রুটিন প্রকাশিত হয়েছে।',
+      date: 'গতকাল, ০৮:১৫ PM',
+      unread: true,
+    ),
+    (
+      title: 'Award Mania Season 22',
+      body: 'নতুন মডেল টেস্টে অংশ নিন এবং আকর্ষণীয় পুরস্কার জিতে নিন।',
+      date: '০৭ সেপ্টেম্বর ২০২৬',
+      unread: true,
+    ),
+  ];
+
+  int get _unreadCount => _notices.where((notice) => notice.unread).length;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Expanded(
+              child: Text('Notice Board',
+                  style: TextStyle(fontSize: 27, fontWeight: FontWeight.w700)),
+            ),
+            TextButton(
+              onPressed: _unreadCount == 0
+                  ? null
+                  : () => setState(() {
+                        for (var index = 0; index < _notices.length; index++) {
+                          _notices[index] = (
+                            title: _notices[index].title,
+                            body: _notices[index].body,
+                            date: _notices[index].date,
+                            unread: false
+                          );
+                        }
+                      }),
+              child: const Text('সব পড়া হয়েছে'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '$_unreadCountটি unread notice',
+          style: const TextStyle(color: AppConstants.mutedText),
+        ),
+        const SizedBox(height: 14),
+        for (var index = 0; index < _notices.length; index++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _NoticeCard(
+              notice: _notices[index],
+              onExpanded: () {
+                if (_notices[index].unread) {
+                  setState(() {
+                    _notices[index] = (
+                      title: _notices[index].title,
+                      body: _notices[index].body,
+                      date: _notices[index].date,
+                      unread: false
+                    );
+                  });
+                }
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _NoticeCard extends StatelessWidget {
+  const _NoticeCard({required this.notice, required this.onExpanded});
+
+  final ({String title, String body, String date, bool unread}) notice;
+  final VoidCallback onExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.white,
+      child: ExpansionTile(
+        onExpansionChanged: (_) => onExpanded(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(52, 0, 16, 16),
+        leading: Icon(
+          notice.unread ? Icons.notifications_active : Icons.notifications_none,
+          color: notice.unread ? Colors.orange : AppConstants.mutedText,
+        ),
+        title: Text(
+          notice.title,
+          style: TextStyle(
+            fontWeight: notice.unread ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(notice.date),
         children: [
-          const Text('Notice Board',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('10 unread notices'),
-            TextButton(onPressed: () {}, child: const Text('Mark all as read')),
-          ]),
-          for (final notice in const [
-            (
-              'আজই শেষ দিন!',
-              'Rapid Discount অফারের আজই শেষ দিন! Live MCQ প্রিমিয়াম প্যাকেজে বিশেষ ছাড়।'
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              notice.body,
+              style: const TextStyle(height: 1.5, color: Colors.black87),
             ),
-            (
-              'BCS প্রস্তুতি নতুন রুটিন',
-              'বিসিএস প্রিলি প্রস্তুতির জন্য গুরুত্বপূর্ণ টপিকের উপর নতুন রুটিন প্রকাশিত হয়েছে।'
-            ),
-            ('Award Mania Season 22', 'নতুন মডেল টেস্ট ও পুরস্কার জিতুন।'),
-          ])
-            Card(
-              child: ExpansionTile(
-                leading: const Icon(Icons.notifications, color: Colors.orange),
-                title: Text(notice.$1,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                children: [
-                  Padding(
-                      padding: const EdgeInsets.all(16),
-                      child:
-                          Text('${notice.$2}\n\nবিস্তারিত জানতে লিংক দেখুন।'))
-                ],
-              ),
-            ),
+          ),
         ],
-      );
+      ),
+    );
+  }
 }
 
 class _ProfilePage extends StatelessWidget {

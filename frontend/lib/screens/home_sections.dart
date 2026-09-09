@@ -22,10 +22,26 @@ class StudySection extends StatelessWidget {
           children: [
             for (final item
                 in const <({String title, String subtitle, IconData icon})>[
-              (title: 'বাংলা', subtitle: 'ব্যাকরণ ও সাহিত্য', icon: Icons.auto_stories),
-              (title: 'ইংরেজি', subtitle: 'গ্রামার ও ভোকাবুলারি', icon: Icons.language),
-              (title: 'গণিত', subtitle: 'পাটিগণিত থেকে জ্যামিতি', icon: Icons.calculate),
-              (title: 'সাধারণ জ্ঞান', subtitle: 'বাংলাদেশ ও আন্তর্জাতিক', icon: Icons.public),
+              (
+                title: 'বাংলা',
+                subtitle: 'ব্যাকরণ ও সাহিত্য',
+                icon: Icons.auto_stories
+              ),
+              (
+                title: 'ইংরেজি',
+                subtitle: 'গ্রামার ও ভোকাবুলারি',
+                icon: Icons.language
+              ),
+              (
+                title: 'গণিত',
+                subtitle: 'পাটিগণিত থেকে জ্যামিতি',
+                icon: Icons.calculate
+              ),
+              (
+                title: 'সাধারণ জ্ঞান',
+                subtitle: 'বাংলাদেশ ও আন্তর্জাতিক',
+                icon: Icons.public
+              ),
             ])
               SizedBox(
                 width: width,
@@ -118,7 +134,8 @@ class ExamList extends StatelessWidget {
                 title: Text(exam.title),
                 subtitle: Text(
                   '${exam.totalMarks} নম্বর • ${exam.durationMinutes} মিনিট • '
-                  'নেগেটিভ ${exam.negativeMarking}',
+                  'নেগেটিভ ${exam.negativeMarking}'
+                  '${exam.startsAt == null ? '' : '\nসময়: ${_formatDateTime(exam.startsAt!)}'}',
                 ),
                 onTap: () => context.go('/exam/${exam.id}'),
               ),
@@ -126,6 +143,14 @@ class ExamList extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  static String _formatDateTime(DateTime date) {
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year} '
+        '$hour:${date.minute.toString().padLeft(2, '0')} $period';
   }
 }
 
