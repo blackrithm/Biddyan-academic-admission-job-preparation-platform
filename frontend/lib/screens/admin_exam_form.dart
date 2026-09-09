@@ -5,8 +5,14 @@ import '../providers/providers.dart';
 import '../services/services.dart';
 
 class AdminExamForm extends StatefulWidget {
-  const AdminExamForm({super.key, required this.topics});
+  const AdminExamForm({
+    super.key,
+    required this.topics,
+    required this.onCreated,
+  });
+
   final List<TopicNode> topics;
+  final VoidCallback onCreated;
 
   @override
   State<AdminExamForm> createState() => _AdminExamFormState();
@@ -249,6 +255,7 @@ class _AdminExamFormState extends State<AdminExamForm> {
         'questionIds': _selected.toList(),
       });
       if (mounted) {
+        widget.onCreated();
         setState(() => _success = 'পরীক্ষা সফলভাবে তৈরি হয়েছে');
         _selected.clear();
       }

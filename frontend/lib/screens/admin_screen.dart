@@ -6,6 +6,7 @@ import 'admin_question_form.dart';
 import 'admin_exam_form.dart';
 import 'admin_topics.dart';
 import '../widgets/brand_navigation.dart';
+import 'home_screen.dart';
 
 /// Admin Panel (Flutter Web).
 ///
@@ -88,7 +89,10 @@ class _TabbedAdminState extends ConsumerState<_TabbedAdmin> {
                 ? TopicsPanel(topics: rows, notifier: notifier)
                 : _section == 1
                     ? AdminQuestionForm(topics: rows)
-                    : AdminExamForm(topics: rows),
+                    : AdminExamForm(
+                        topics: rows,
+                        onCreated: () => ref.invalidate(examsProvider),
+                      ),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => _ErrorCard(message: error.toString()),
           ),
