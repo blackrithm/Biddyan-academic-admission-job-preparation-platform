@@ -58,6 +58,18 @@ class _AdminExamFormState extends State<AdminExamForm> {
     }
 
     flatten(widget.topics);
+    final uniqueTopics = <String, TopicNode>{
+      for (final topic in flatTopics) topic.id: topic,
+    }.values.toList();
+    final uniqueExams = <String, Exam>{
+      for (final exam in _sourceExams) exam.id: exam,
+    }.values.toList();
+    final selectedExamId = uniqueExams.any((exam) => exam.id == _sourceExamId)
+        ? _sourceExamId
+        : null;
+    final selectedTopicId = uniqueTopics.any((topic) => topic.id == _topicId)
+        ? _topicId
+        : null;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -86,12 +98,12 @@ class _AdminExamFormState extends State<AdminExamForm> {
                 const SizedBox(height: 12),
                 if (_questionBankMode) ...[
                   DropdownButtonFormField<String>(
-                    value: _sourceExamId,
+                    value: selectedExamId,
                     decoration: const InputDecoration(
                       labelText: 'কোন exam-কে question bank করবেন?',
                     ),
                     items: [
-                      for (final exam in _sourceExams)
+                      for (final exam in uniqueExams)
                         DropdownMenuItem(value: exam.id, child: Text(exam.title)),
                     ],
                     onChanged: _loadSourceExam,
@@ -111,10 +123,10 @@ class _AdminExamFormState extends State<AdminExamForm> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: _topicId,
+                  value: selectedTopicId,
                   decoration: const InputDecoration(labelText: 'বিষয় / টপিক'),
                   items: [
-                    for (final topic in flatTopics)
+                    for (final topic in uniqueTopics)
                       DropdownMenuItem(
                           value: topic.id, child: Text(topic.name)),
                   ],

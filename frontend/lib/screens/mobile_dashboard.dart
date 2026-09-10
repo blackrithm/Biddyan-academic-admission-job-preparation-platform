@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../core/constants.dart';
 import '../providers/providers.dart';
 import '../widgets/brand_navigation.dart';
-import 'home_screen.dart';
-import 'home_sections.dart';
 
 class MobileDashboard extends ConsumerStatefulWidget {
   const MobileDashboard({super.key});
@@ -23,7 +21,7 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _DashboardHome(onNotice: () => setState(() => _selectedIndex = 1)),
+      const _DashboardHome(),
       const _NoticeBoard(),
       const _ProfilePage(),
       const _PackagesPage(),
@@ -90,51 +88,13 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
 }
 
 class _DashboardHome extends StatelessWidget {
-  const _DashboardHome({required this.onNotice});
-
-  final VoidCallback onNotice;
+  const _DashboardHome();
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
       children: [
-        Card(
-          color: const Color(0xFFFFF2F4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                const FaIcon(FontAwesomeIcons.triangleExclamation,
-                    color: AppConstants.accent),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'আপনার কোনো Active প্যাকেজ নেই',
-                    style: TextStyle(
-                      color: Color(0xFFB9364D),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 104,
-                  height: 44,
-                  child: FilledButton(
-                    onPressed: () {},
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      textStyle: const TextStyle(fontSize: 13),
-                    ),
-                    child: const Text('প্যাকেজ কিনুন'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
         _SectionTitle(title: 'পরীক্ষা সেকশন', color: AppConstants.primary),
         const SizedBox(height: 8),
         Card(
@@ -178,33 +138,6 @@ class _DashboardHome extends StatelessWidget {
               context.push('/previous-question-bank');
             }
           },
-        ),
-        const SizedBox(height: 16),
-        _SectionTitle(title: 'স্টাডি সেকশন', color: AppConstants.primary),
-        const SizedBox(height: 8),
-        StudySection(
-          onStudyTap: (_) => context.push('/subject-catalog'),
-        ),
-        const SizedBox(height: 16),
-        _SectionTitle(title: 'দ্রুত লিংক', color: AppConstants.primary),
-        ListTile(
-          tileColor: Colors.white,
-          leading: const Icon(Icons.notifications_active, color: Colors.orange),
-          title: const Text('Notice Board'),
-          subtitle: const Text('সর্বশেষ নোটিশ ও অফার দেখুন'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: onNotice,
-        ),
-        const SizedBox(height: 16),
-        const Text('সাম্প্রতিক পরীক্ষা',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Consumer(
-          builder: (context, ref, _) => ref.watch(examsProvider).when(
-                data: (exams) => ExamList(exams: exams),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => ErrorCard(message: error.toString()),
-              ),
         ),
       ],
     );
