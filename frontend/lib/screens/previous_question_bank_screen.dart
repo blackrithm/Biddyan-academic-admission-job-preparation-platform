@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../models/models.dart';
@@ -21,11 +22,15 @@ class _PreviousQuestionBankScreenState
   String _selectedFilter = _allFilter;
   String _search = '';
   late Future<List<Question>> _questions;
+  late Future<List<Exam>> _exams;
+  String _examSearch = '';
+  String _examYear = 'সব বছর';
 
   @override
   void initState() {
     super.initState();
     _questions = _loadQuestions();
+    _exams = ExamService(apiClient).list();
   }
 
   /// Loads the complete admin question bank (previous-year tags and
@@ -107,6 +112,14 @@ class _PreviousQuestionBankScreenState
             ),
           ),
           const SizedBox(height: 12),
+          _PreviousExamCatalog(
+            exams: _exams,
+            search: _examSearch,
+            year: _examYear,
+            onSearch: (value) => setState(() => _examSearch = value),
+            onYearChanged: (value) => setState(() => _examYear = value),
+          ),
+          const SizedBox(height: 18),
           TextField(
             onChanged: (value) => setState(() => _search = value.trim()),
             decoration: const InputDecoration(
@@ -194,6 +207,179 @@ class _PreviousQuestionBankScreenState
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 1,
         onSelected: (index) => BrandBottomNavigation.navigate(context, index),
+      ),
+    );
+  }
+}
+
+class _PreviousExamCatalog extends StatelessWidget {
+  const _PreviousExamCatalog({
+    required this.exams,
+    required this.search,
+    required this.year,
+    required this.onSearch,
+    required this.onYearChanged,
+  });
+
+  final Future<List<Exam>> exams;
+  final String search;
+  final String year;
+  final ValueChanged<String> onSearch;
+  final ValueChanged<String> onYearChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Exam>>(
+      future: exams,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+        final all = snapshot.data ?? const <Exam>[];
+        final years = <String>{
+          'সব বছর',
+          for (final exam in all)
+            if (exam.startsAt != null) exam.startsAt!.year.toString(),
+        }.toList();
+        final filtered = all.where((exam) {
+          final matchesSearch = search.trim().isEmpty ||
+              exam.title.toLowerCase().contains(search.trim().toLowerCase());
+          final matchesYear = year == 'সব বছর' ||
+              exam.startsAt?.year.toString() == year;
+          return matchesSearch && matchesYear;
+        }).toList();
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF3F9),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Previous Exam Question Bank',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: onSearch,
+                      decoration: const InputDecoration(
+                        hintText: 'Search exam...',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: years.contains(year) ? year : 'সব বছর',
+                    items: [
+                      for (final item in years)
+                        DropdownMenuItem(value: item, child: Text(item)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) onYearChanged(value);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('${filtered.length}টি exam পাওয়া গেছে',
+                  style: const TextStyle(color: AppConstants.mutedText)),
+              const SizedBox(height: 8),
+              if (filtered.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('কোনো previous exam পাওয়া যায়নি'),
+                )
+              else
+                for (final exam in filtered)
+                  _PreviousExamCard(exam: exam),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PreviousExamCard extends StatelessWidget {
+  const _PreviousExamCard({required this.exam});
+
+  final Exam exam;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(exam.title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 5),
+            Text(
+              'Total marks: ${exam.totalMarks.toStringAsFixed(0)}  •  Duration: ${exam.durationMinutes} minutes',
+              style: const TextStyle(color: AppConstants.mutedText),
+            ),
+            const SizedBox(height: 5),
+            Text('প্রশ্ন ব্যাংক: ${exam.questionCount ?? exam.questions.length}টি প্রশ্ন'),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _read(context),
+                    child: const Text('Read'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => context.push('/exam/${exam.id}'),
+                    child: const Text('Exam দিন'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _read(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => FutureBuilder<Exam>(
+        future: ExamService(apiClient).getById(exam.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox(
+                height: 300, child: Center(child: CircularProgressIndicator()));
+          }
+          final questions = snapshot.data?.questions ?? const <Question>[];
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(exam.title,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              for (var index = 0; index < questions.length; index++)
+                _QuestionCard(index: index + 1, question: questions[index]),
+            ],
+          );
+        },
       ),
     );
   }

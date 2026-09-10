@@ -27,6 +27,10 @@ class _AdminExamFormState extends State<AdminExamForm> {
   DateTime? _startsAt;
   DateTime? _endsAt;
   bool _isLive = false;
+  bool _questionBankMode = false;
+  String? _sourceExamId;
+  bool _loadingSourceExams = false;
+  List<Exam> _sourceExams = [];
   bool _loadingQuestions = false;
   bool _saving = false;
   String? _error;
@@ -68,6 +72,39 @@ class _AdminExamFormState extends State<AdminExamForm> {
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('নতুন পরীক্ষা')),
+                    ButtonSegment(value: true, label: Text('Previous Question Bank')),
+                  ],
+                  selected: {_questionBankMode},
+                  onSelectionChanged: (value) {
+                    setState(() => _questionBankMode = value.first);
+                    if (value.first && _sourceExams.isEmpty) _loadSourceExams();
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (_questionBankMode) ...[
+                  DropdownButtonFormField<String>(
+                    value: _sourceExamId,
+                    decoration: const InputDecoration(
+                      labelText: 'কোন exam-কে question bank করবেন?',
+                    ),
+                    items: [
+                      for (final exam in _sourceExams)
+                        DropdownMenuItem(value: exam.id, child: Text(exam.title)),
+                    ],
+                    onChanged: _loadSourceExam,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _loadingSourceExams
+                        ? 'Exam list লোড হচ্ছে...'
+                        : 'Selected exam-এর প্রশ্নগুলো নিচে question bank হিসেবে ব্যবহার করুন।',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 TextField(
                   controller: _title,
                   decoration: const InputDecoration(labelText: 'পরীক্ষার নাম'),
@@ -206,6 +243,39 @@ class _AdminExamFormState extends State<AdminExamForm> {
       if (mounted) setState(() => _questions = questions);
     } catch (error) {
       if (mounted) setState(() => _error = 'প্রশ্ন লোড ব্যর্থ: $error');
+    } finally {
+      if (mounted) setState(() => _loadingQuestions = false);
+    }
+  }
+
+  Future<void> _loadSourceExams() async {
+    setState(() => _loadingSourceExams = true);
+    try {
+      final exams = await ExamService(apiClient).list();
+      if (mounted) setState(() => _sourceExams = exams);
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Exam list লোড ব্যর্থ: $error');
+    } finally {
+      if (mounted) setState(() => _loadingSourceExams = false);
+    }
+  }
+
+  Future<void> _loadSourceExam(String? examId) async {
+    if (examId == null) return;
+    setState(() {
+      _sourceExamId = examId;
+      _loadingQuestions = true;
+      _selected.clear();
+    });
+    try {
+      final exam = await ExamService(apiClient).getById(examId);
+      if (!mounted) return;
+      setState(() {
+        _questions = exam.questions;
+        _topicId = exam.topicId;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Exam questions লোড ব্যর্থ: $error');
     } finally {
       if (mounted) setState(() => _loadingQuestions = false);
     }

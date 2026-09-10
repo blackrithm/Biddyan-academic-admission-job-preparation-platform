@@ -250,16 +250,26 @@ class _QuestionBankSets extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sets = <String>{};
+    final examTypes = <String>{};
+    final previousYears = <String>{};
     for (final question in questions) {
-      if (question.examType?.isNotEmpty == true) sets.add(question.examType!);
-      if (question.questionSet?.isNotEmpty == true) {
-        sets.add(question.questionSet!);
-      }
+      if (question.examType?.isNotEmpty == true) examTypes.add(question.examType!);
+      previousYears.addAll(question.previousYears);
     }
-    if (sets.isEmpty) {
-      sets.addAll({'Model Test Sets', 'Board Question Sets'});
-    }
+    final entries = <_QuestionBankEntry>[
+      for (final type in examTypes)
+        _QuestionBankEntry(
+          label: type,
+          caption: 'Exam Type',
+          questions: questions.where((question) => question.examType == type).toList(),
+        ),
+      for (final year in previousYears)
+        _QuestionBankEntry(
+          label: year,
+          caption: 'Previous Year',
+          questions: questions.where((question) => question.previousYears.contains(year)).toList(),
+        ),
+    ];
 
     return Card(
       color: AppConstants.primary.withValues(alpha: 0.08),
@@ -273,17 +283,22 @@ class _QuestionBankSets extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            for (final set in sets)
+            if (entries.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('এই category-তে এখনো কোনো question bank যোগ করা হয়নি।'),
+              ),
+            for (final entry in entries)
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.history_edu),
-                title: Text(set),
+                title: Text(entry.label),
                 subtitle: Text(
-                  '${questions.where((question) => question.examType == set || question.questionSet == set).length}টি প্রশ্ন',
+                  '${entry.caption} • ${entry.questions.length}টি প্রশ্ন',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showSet(context, set),
+                onTap: () => _showSet(context, entry.label, entry.questions),
               ),
           ],
         ),
@@ -291,11 +306,11 @@ class _QuestionBankSets extends StatelessWidget {
     );
   }
 
-  void _showSet(BuildContext context, String set) {
-    final matchingQuestions = questions
-        .where((question) =>
-            question.examType == set || question.questionSet == set)
-        .toList();
+  void _showSet(
+    BuildContext context,
+    String set,
+    List<Question> matchingQuestions,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -306,6 +321,18 @@ class _QuestionBankSets extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuestionBankEntry {
+  const _QuestionBankEntry({
+    required this.label,
+    required this.caption,
+    required this.questions,
+  });
+
+  final String label;
+  final String caption;
+  final List<Question> questions;
 }
 
 class _QuestionBankListSheet extends StatefulWidget {
@@ -436,14 +463,22 @@ class _QuestionBankListSheetState extends State<_QuestionBankListSheet> {
   }
 }
 
-class _QuestionBankListCard extends StatelessWidget {
+class _QuestionBankListCard extends StatefulWidget {
   const _QuestionBankListCard({required this.index, required this.question});
 
   final int index;
   final Question question;
 
   @override
+  State<_QuestionBankListCard> createState() => _QuestionBankListCardState();
+}
+
+class _QuestionBankListCardState extends State<_QuestionBankListCard> {
+  bool _bookmarked = false;
+
+  @override
   Widget build(BuildContext context) {
+    final question = widget.question;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
@@ -456,13 +491,21 @@ class _QuestionBankListCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('প্রশ্ন $index',
+                  child: Text('প্রশ্ন ${widget.index}',
                       style: const TextStyle(
                           color: AppConstants.mutedText,
                           fontWeight: FontWeight.w700)),
                 ),
-                const Icon(Icons.favorite_border,
-                    color: Color(0xFFE85B61), size: 19),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: _bookmarked ? 'বুকমার্ক সরান' : 'বুকমার্ক করুন',
+                  onPressed: () => setState(() => _bookmarked = !_bookmarked),
+                  icon: Icon(
+                    _bookmarked ? Icons.favorite : Icons.favorite_border,
+                    color: const Color(0xFFE85B61),
+                    size: 19,
+                  ),
+                ),
                 const SizedBox(width: 5),
                 Text(question.topicName ?? 'SSC'),
               ],
@@ -507,6 +550,7 @@ class _QuestionBankListCard extends StatelessWidget {
   }
 
   void _showAnswer(BuildContext context) {
+    final question = widget.question;
     final answerIndex = ['A', 'B', 'C', 'D'].indexOf(question.correctOption ?? '');
     final answer = answerIndex >= 0 ? question.options[answerIndex] : 'উত্তর দেওয়া হয়নি';
     showModalBottomSheet<void>(

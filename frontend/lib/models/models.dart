@@ -134,6 +134,7 @@ class Exam {
     this.startsAt,
     this.endsAt,
     this.questions = const [],
+    this.questionCount,
   });
 
   final String id;
@@ -147,6 +148,7 @@ class Exam {
   final DateTime? startsAt;
   final DateTime? endsAt;
   final List<Question> questions;
+  final int? questionCount;
 
   factory Exam.fromJson(Map<String, dynamic> json) {
     return Exam(
@@ -164,6 +166,7 @@ class Exam {
       questions: (json['questions'] as List<dynamic>? ?? const [])
           .map((e) => Question.fromJson(e as Map<String, dynamic>))
           .toList(),
+        questionCount: (json['question_count'] as num?)?.toInt(),
     );
   }
 
@@ -179,6 +182,7 @@ class Exam {
     DateTime? startsAt,
     DateTime? endsAt,
     List<Question>? questions,
+    int? questionCount,
   }) {
     return Exam(
       id: id ?? this.id,
@@ -192,6 +196,7 @@ class Exam {
       startsAt: startsAt ?? this.startsAt,
       endsAt: endsAt ?? this.endsAt,
       questions: questions ?? this.questions,
+      questionCount: questionCount ?? this.questionCount,
     );
   }
 

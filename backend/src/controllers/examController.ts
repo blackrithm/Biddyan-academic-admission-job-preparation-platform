@@ -92,9 +92,12 @@ export class ExamController {
   static async getExams(req: Request, res: Response) {
     try {
       const query = `
-        SELECT e.*, t.name as topic_name 
+        SELECT e.*, t.name as topic_name,
+               COUNT(eq.question_id)::int as question_count
         FROM exams e
         LEFT JOIN topics t ON e.topic_id = t.id
+        LEFT JOIN exam_questions eq ON eq.exam_id = e.id
+        GROUP BY e.id, t.name
         ORDER BY e.created_at DESC;
       `;
       const result = await pool.query(query);
