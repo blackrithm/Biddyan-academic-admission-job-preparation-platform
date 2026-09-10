@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import apiRoutes from './routes/api';
 import { pool } from './config/db';
 import { redisClient } from './config/redis';
+import { AuthController } from './controllers/authController';
 
 dotenv.config();
 
@@ -46,7 +47,12 @@ app.get('/health', async (req, res) => {
 });
 
 // Start listening
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  try {
+    await AuthController.ensureAdminAccount();
+  } catch (error) {
+    console.error('Could not provision admin account:', error);
+  }
   console.log(`===============================================`);
   console.log(`🚀 Biddyan Core Backend running on port ${PORT}`);
   console.log(`🔌 Database Pool initialized`);

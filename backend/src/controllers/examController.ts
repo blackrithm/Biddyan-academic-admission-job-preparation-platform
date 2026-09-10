@@ -8,7 +8,12 @@ export class ExamController {
    * Fetches random questions across hierarchical categories (Topic + Children Sub-topics)
    */
   static async generateDynamicExam(req: Request, res: Response) {
-    const { topicId, questionCount = 10, title = 'Instant Practice Exam' } = req.body;
+    const {
+      topicId,
+      questionCount = 10,
+      durationMinutes,
+      title = 'Instant Practice Exam',
+    } = req.body;
 
     if (!topicId) {
       return res.status(400).json({ error: 'topicId parameter is required' });
@@ -57,7 +62,7 @@ export class ExamController {
         topicId,
         questionsResult.rows.length, // 1 mark per question
         0.25,                        // Default negative marking
-        questionsResult.rows.length, // 1 minute per question
+        durationMinutes || questionsResult.rows.length, // User-selected duration, or 1 minute per question
         false
       ]);
 

@@ -137,7 +137,10 @@ class _AccountFormState extends State<_AccountForm> {
                 subtitle: 'অ্যাডমিন',
                 icon: Icons.admin_panel_settings_outlined,
                 selected: _role == 'admin',
-                onTap: () => setState(() => _role = 'admin'),
+                onTap: () => setState(() {
+                  _role = 'admin';
+                  _loginMode = true;
+                }),
               ),
             ),
           ],

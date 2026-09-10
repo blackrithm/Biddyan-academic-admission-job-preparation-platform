@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_PASSWORD: 1234
       POSTGRES_DB: biddyan
     ports:
       - "5432:5432"
@@ -41,7 +41,7 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
-      - DB_PASSWORD=postgrespassword
+      - DB_PASSWORD=1234
       - DB_NAME=biddyan
       - REDIS_HOST=redis
       - REDIS_PORT=6379

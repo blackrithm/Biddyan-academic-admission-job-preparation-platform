@@ -7,9 +7,25 @@ import bcrypt from 'bcrypt';
 const JWT_SECRET = process.env.JWT_SECRET || 'biddyan_jwt_secret_high_entropy_2026_super_key';
 
 export class AuthController {
+  static async ensureAdminAccount() {
+    const phoneNumber = process.env.ADMIN_PHONE || '01842048339';
+    const password = process.env.ADMIN_PASSWORD || 'adminsust';
+    const passwordHash = await bcrypt.hash(password, 12);
+    await pool.query(
+      `INSERT INTO users (phone_number, password_hash, display_name, role)
+       VALUES ($1, $2, 'Biddyan Admin', 'admin')
+       ON CONFLICT (phone_number)
+       DO UPDATE SET password_hash = EXCLUDED.password_hash,
+                     display_name = EXCLUDED.display_name,
+                     role = 'admin'`,
+      [phoneNumber, passwordHash],
+    );
+    console.log(`Admin account ready for ${phoneNumber}`);
+  }
+
   static async register(req: Request, res: Response) {
-    const { phoneNumber, password, guestId, role = 'student' } = req.body;
-    const accountRole = role === 'admin' ? 'admin' : 'student';
+    const { phoneNumber, password, guestId } = req.body;
+    const accountRole = 'student';
     if (!phoneNumber || !password || password.length < 4) {
       return res.status(400).json({ error: 'Phone number and a 4+ character password are required' });
     }

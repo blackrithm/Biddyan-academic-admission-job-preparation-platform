@@ -38,13 +38,14 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/admin',
-      builder: (context, state) => const AdminScreen(),
+      builder: (context, state) => const _AdminGate(),
     ),
     GoRoute(
       path: '/subject-practice',
       builder: (context, state) => SubjectPracticeScreen(
         topicId: state.uri.queryParameters['topicId'],
         topicName: state.uri.queryParameters['topicName'],
+        showAll: state.uri.queryParameters['mode'] == 'all',
       ),
     ),
     GoRoute(
@@ -97,6 +98,19 @@ class _HomeGate extends ConsumerWidget {
       return const AuthScreen();
     }
     return const MobileDashboard();
+  }
+}
+
+class _AdminGate extends ConsumerWidget {
+  const _AdminGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authNotifierProvider);
+    if (authState.user?.role != 'admin') {
+      return const AuthScreen();
+    }
+    return const AdminScreen();
   }
 }
 

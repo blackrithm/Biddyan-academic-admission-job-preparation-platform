@@ -130,7 +130,20 @@ class QuestionService {
           .map((e) => Question.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (_) {
-      return MockData.questions;
+      return MockData.questions.where((question) {
+        final matchesTopic = topicId == null || question.topicId == topicId;
+        final matchesSearch = search == null ||
+            question.questionText.toLowerCase().contains(search.toLowerCase());
+        final matchesYear = previousYear == null ||
+            question.previousYears.contains(previousYear);
+        final matchesExamType = examType == null || question.examType == examType;
+        final matchesSet = questionSet == null || question.questionSet == questionSet;
+        return matchesTopic &&
+            matchesSearch &&
+            matchesYear &&
+            matchesExamType &&
+            matchesSet;
+      }).toList();
     }
   }
 
@@ -200,12 +213,14 @@ class ExamService {
   Future<Exam> generateDynamic({
     required String topicId,
     int questionCount = 10,
+    int? durationMinutes,
     String title = 'Instant Practice Exam',
   }) async {
     try {
       final json = await client.post('exams/generate-dynamic', body: {
         'topicId': topicId,
         'questionCount': questionCount,
+        if (durationMinutes != null) 'durationMinutes': durationMinutes,
         'title': title,
       });
       return Exam.fromJson(json as Map<String, dynamic>);
