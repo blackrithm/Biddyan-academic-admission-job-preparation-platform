@@ -97,17 +97,40 @@ class _DashboardHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
       children: [
         Card(
-          color: const Color(0xFFFFF4F1),
-          child: ListTile(
-            leading: const FaIcon(FontAwesomeIcons.triangleExclamation,
-                color: Colors.deepOrange),
-            title: const Text('আপনার কোনো Active প্যাকেজ নেই'),
-            trailing: FilledButton(
-              onPressed: () {},
-              child: const Text('প্যাকেজ কিনুন'),
+          color: const Color(0xFFFFF2F4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                const FaIcon(FontAwesomeIcons.triangleExclamation,
+                    color: AppConstants.accent),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'আপনার কোনো Active প্যাকেজ নেই',
+                    style: TextStyle(
+                      color: Color(0xFFB9364D),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 104,
+                  height: 44,
+                  child: FilledButton(
+                    onPressed: () {},
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      textStyle: const TextStyle(fontSize: 13),
+                    ),
+                    child: const Text('প্যাকেজ কিনুন'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -196,17 +219,24 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x2200343A),
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
         child: Text(title,
             textAlign: TextAlign.center,
             style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
-                fontWeight: FontWeight.bold)),
+                fontWeight: FontWeight.w800)),
       );
 }
 
@@ -224,25 +254,38 @@ class _FeatureGrid extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              for (final item in items)
+              for (var index = 0; index < items.length; index++)
                 SizedBox(
                   width: width,
-                  height: 78,
+                  height: 74,
                   child: Card(
+                    elevation: 3,
+                    shadowColor: const Color(0x24000000),
                     child: InkWell(
-                      onTap: () => onTap(item.$1),
+                      onTap: () => onTap(items[index].$1),
                       borderRadius: BorderRadius.circular(16),
                       child: Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Row(
                           children: [
-                            FaIcon(item.$2,
-                                color: AppConstants.primary, size: 22),
-                            const SizedBox(width: 6),
+                            FaIcon(items[index].$2,
+                                color: const Color(0xFF2C2F3D), size: 24),
+                            const SizedBox(width: 8),
                             Expanded(
-                                child: Text(item.$1,
+                                child: Text(items[index].$1,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis)),
+                            if (index.isOdd)
+                              const Align(
+                                alignment: Alignment.topRight,
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 7),
+                                  child: CircleAvatar(
+                                    radius: 5,
+                                    backgroundColor: AppConstants.accent,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),

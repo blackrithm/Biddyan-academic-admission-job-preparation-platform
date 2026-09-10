@@ -9,7 +9,8 @@ void main() {
       const ProviderScope(child: BiddyanApp()),
     );
 
-    // The home gate shows the auth screen by default (not logged in).
-    expect(find.text('বিদ্বান'), findsOneWidget);
+    // The auth notifier starts in guest mode, so the home gate shows the
+    // dashboard immediately.
+    expect(find.text('পরীক্ষা সেকশন'), findsOneWidget);
   });
 }

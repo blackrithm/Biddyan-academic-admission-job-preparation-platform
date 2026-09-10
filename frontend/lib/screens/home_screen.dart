@@ -250,7 +250,7 @@ class _CategoryGrid extends StatelessWidget {
             for (final category in categories)
               SizedBox(
                 width: width,
-                height: 120,
+                height: 108,
                 child: _CategoryCard(
                   title: category.title,
                   icon: category.icon,
@@ -280,21 +280,33 @@ class _CategoryCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
             children: [
-              Icon(icon, color: AppConstants.primary, size: 30),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppConstants.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(11),
+                  child: Icon(icon, color: AppConstants.primary, size: 24),
                 ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 14,
+                  color: AppConstants.mutedText),
             ],
           ),
         ),

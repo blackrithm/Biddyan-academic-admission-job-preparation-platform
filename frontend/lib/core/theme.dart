@@ -4,9 +4,8 @@ import 'constants.dart';
 
 /// Global Biddyan brand theme.
 ///
-/// Uses a Bengali-first friendly palette: deep emerald primary, warm orange
-/// accent, and light neutral surfaces that keeps MCQ text highly readable on
-/// both web (wider canvas) and mobile (smaller canvas).
+/// Uses a deep teal brand, warm white surfaces, and vivid red actions inspired
+/// by the reference learning-platform visual.
 class AppTheme {
   AppTheme._();
 
@@ -17,38 +16,67 @@ class AppTheme {
       seedColor: AppConstants.primary,
       brightness: Brightness.light,
       surface: AppConstants.surface,
+      surfaceTint: AppConstants.primary,
+    ).copyWith(
+      primary: AppConstants.primary,
+      secondary: AppConstants.accent,
+      error: AppConstants.accent,
     );
 
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppConstants.background,
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+      textTheme: const TextTheme(
+        headlineSmall: TextStyle(
+          color: AppConstants.primary,
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          height: 1.15,
+        ),
+        titleLarge: TextStyle(
+          color: AppConstants.primary,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+        titleMedium: TextStyle(
+          color: AppConstants.primary,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+        bodyLarge: TextStyle(color: Color(0xFF24383A), height: 1.45),
+        bodyMedium: TextStyle(color: AppConstants.mutedText, height: 1.4),
+      ),
     );
 
     return base.copyWith(
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppConstants.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: AppConstants.surface,
+        foregroundColor: AppConstants.primary,
         elevation: 0,
         centerTitle: false,
+        scrolledUnderElevation: 0,
         titleTextStyle: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 20,
-          color: Colors.white,
+          color: AppConstants.primary,
         ),
       ),
       cardTheme: const CardThemeData(
         color: AppConstants.surface,
-        elevation: 0,
+        elevation: 2,
+        shadowColor: Color(0x22000000),
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderRadius: BorderRadius.all(Radius.circular(18)),
         ),
         surfaceTintColor: Colors.transparent,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppConstants.surface,
-        indicatorColor: const Color(0x24006A4E),
+        elevation: 2,
+        indicatorColor: const Color(0x1F00343A),
         labelTextStyle: const WidgetStatePropertyAll(
           TextStyle(color: AppConstants.primary, fontWeight: FontWeight.w600),
         ),
@@ -62,9 +90,20 @@ class AppTheme {
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppConstants.accent,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(double.infinity, 52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -73,7 +112,7 @@ class AppTheme {
           side: const BorderSide(color: AppConstants.primary, width: 1.4),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
@@ -92,15 +131,15 @@ class AppTheme {
           vertical: 16,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(
             color: AppConstants.primary,
             width: 1.6,

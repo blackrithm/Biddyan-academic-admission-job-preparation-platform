@@ -27,16 +27,16 @@ class AppConstants {
     return '/api';
   }
 
-  /// Brand primary emerald/teal color used across all screens.
-  static const Color primary = Color(0xFF006A4E);
+  /// Deep teal brand color inspired by the reference visual.
+  static const Color primary = Color(0xFF00343A);
 
-  /// Warm accent (orange) used for CTAs, banners and warnings.
-  static const Color accent = Color(0xFFFF5722);
+  /// Vivid red used for primary calls to action and alerts.
+  static const Color accent = Color(0xFFD9342B);
 
-  /// Light greys used for page backgrounds and card surfaces.
-  static const Color background = Color(0xFFF5F7FA);
+  /// Light neutral background keeps the dark teal brand color focused.
+  static const Color background = Color(0xFFF4F6F5);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color mutedText = Color(0xFF6B7280);
+  static const Color mutedText = Color(0xFF687477);
 
   /// Price/package color (golden).
   static const Color golden = Color(0xFFFFB300);

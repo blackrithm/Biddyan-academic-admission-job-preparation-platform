@@ -45,7 +45,7 @@ class StudySection extends StatelessWidget {
             ])
               SizedBox(
                 width: width,
-                height: 150,
+                height: 126,
                 child: _StudyCard(
                   title: item.title,
                   subtitle: item.subtitle,
@@ -78,11 +78,21 @@ class _StudyCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, color: AppConstants.accent, size: 28),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppConstants.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(icon, color: AppConstants.accent, size: 24),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -93,7 +103,7 @@ class _StudyCard extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                     ),
                     Text(
@@ -106,7 +116,8 @@ class _StudyCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 18),
+                const Icon(Icons.arrow_forward_ios,
+                  size: 14, color: AppConstants.mutedText),
             ],
           ),
         ),
