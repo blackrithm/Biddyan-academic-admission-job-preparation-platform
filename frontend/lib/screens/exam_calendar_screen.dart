@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../core/constants.dart';
+import '../models/models.dart';
+import '../providers/providers.dart';
+import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
 
 enum ExamTab { live, upcoming, archive }
@@ -12,52 +15,12 @@ class ExamCalendarScreen extends StatefulWidget {
   @override
   State<ExamCalendarScreen> createState() => _ExamCalendarScreenState();
 }
-
 class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
   ExamTab _tab = ExamTab.live;
   DateTime _selectedDate = DateTime.now();
 
-  static final _exams = [
-    _ExamItem(
-      title: 'দৈনিক মডেল টেস্ট - বাংলাদেশ বিষয়াবলি',
-      category: 'বাংলাদেশ বিষয়াবলি',
-      date: DateTime(2026, 9, 9, 20, 0),
-      participants: 134,
-      status: ExamTab.live,
-    ),
-    _ExamItem(
-      title: 'BCS প্রিলি পূর্ণাঙ্গ প্রস্তুতি',
-      category: 'সকল বিষয়',
-      date: DateTime(2026, 9, 12, 20, 0),
-      participants: 280,
-      status: ExamTab.upcoming,
-    ),
-    _ExamItem(
-      title: 'মেডিকেল ভর্তি প্রস্তুতি',
-      category: 'সাধারণ বিজ্ঞান',
-      date: DateTime(2026, 9, 15, 19, 0),
-      participants: 192,
-      status: ExamTab.upcoming,
-    ),
-    _ExamItem(
-      title: 'ভূগোল ও পরিবেশ - ফাইনাল প্রস্তুতি',
-      category: 'ভূগোল',
-      date: DateTime(2026, 4, 17, 20, 0),
-      participants: 134,
-      status: ExamTab.archive,
-    ),
-    _ExamItem(
-      title: 'মার্কেটিং ২য় বর্ষ - নিজেকে যাচাই',
-      category: 'ব্যবস্থাপনা',
-      date: DateTime(2026, 4, 4, 20, 0),
-      participants: 102,
-      status: ExamTab.archive,
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final filtered = _exams.where((exam) => exam.status == _tab).toList();
     return Scaffold(
       backgroundColor: AppConstants.background,
       appBar: AppBar(
@@ -70,49 +33,83 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(14),
-        children: [
-          _CalendarStrip(
-            selectedDate: _selectedDate,
-            onChanged: (date) => setState(() => _selectedDate = date),
-          ),
-          const SizedBox(height: 14),
-          SegmentedButton<ExamTab>(
-            segments: const [
-              ButtonSegment(
-                  value: ExamTab.live,
-                  label: Text('লাইভ পরীক্ষা'),
-                  icon: Icon(Icons.play_circle)),
-              ButtonSegment(
-                  value: ExamTab.upcoming,
-                  label: Text('আসন্ন পরীক্ষা'),
-                  icon: Icon(Icons.schedule)),
-              ButtonSegment(
-                  value: ExamTab.archive,
-                  label: Text('আর্কাইভ'),
-                  icon: Icon(Icons.archive)),
-            ],
-            selected: {_tab},
-            onSelectionChanged: (value) => setState(() => _tab = value.first),
-          ),
-          const SizedBox(height: 14),
-          if (filtered.isEmpty)
-            const Card(
+      body: FutureBuilder<List<Exam>>(
+        future: ExamService(apiClient).list(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(28),
-                child: Center(child: Text('এই বিভাগে কোনো পরীক্ষা নেই')),
+                padding: const EdgeInsets.all(24),
+                child: Text('পরীক্ষা লোড করা যায়নি: ${snapshot.error}'),
               ),
-            )
-          else
-            for (final exam in filtered) _ExamCard(exam: exam),
-        ],
+            );
+          }
+          final exams = snapshot.data ?? const <Exam>[];
+          final filtered = exams
+              .where((exam) => _statusFor(exam) == _tab)
+              .toList();
+          return ListView(
+            padding: const EdgeInsets.all(14),
+            children: [
+              _CalendarStrip(
+                selectedDate: _selectedDate,
+                onChanged: (date) => setState(() => _selectedDate = date),
+              ),
+              const SizedBox(height: 14),
+              SegmentedButton<ExamTab>(
+                segments: const [
+                  ButtonSegment(
+                      value: ExamTab.live,
+                      label: Text('লাইভ পরীক্ষা'),
+                      icon: Icon(Icons.play_circle)),
+                  ButtonSegment(
+                      value: ExamTab.upcoming,
+                      label: Text('আসন্ন পরীক্ষা'),
+                      icon: Icon(Icons.schedule)),
+                  ButtonSegment(
+                      value: ExamTab.archive,
+                      label: Text('আর্কাইভ'),
+                      icon: Icon(Icons.archive)),
+                ],
+                selected: {_tab},
+                onSelectionChanged: (value) => setState(() => _tab = value.first),
+              ),
+              const SizedBox(height: 14),
+              if (filtered.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Center(child: Text('এই বিভাগে কোনো পরীক্ষা নেই')),
+                  ),
+                )
+              else
+                for (final exam in filtered) _ExamCard(exam: exam),
+            ],
+          );
+        },
       ),
       bottomNavigationBar: BrandBottomNavigation(
         selectedIndex: 2,
         onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
+  }
+
+  static ExamTab _statusFor(Exam exam) {
+    final now = DateTime.now();
+    if (exam.endsAt != null && !now.isBefore(exam.endsAt!)) {
+      return ExamTab.archive;
+    }
+    if (exam.startsAt != null && now.isBefore(exam.startsAt!)) {
+      return ExamTab.upcoming;
+    }
+    if (exam.isLive || exam.startsAt != null) {
+      return ExamTab.live;
+    }
+    return ExamTab.upcoming;
   }
 
   Future<void> _pickDate(BuildContext context) async {
@@ -125,7 +122,6 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
     if (date != null) setState(() => _selectedDate = date);
   }
 }
-
 class _CalendarStrip extends StatelessWidget {
   const _CalendarStrip({required this.selectedDate, required this.onChanged});
 
@@ -195,12 +191,13 @@ class _CalendarStrip extends StatelessWidget {
 
 class _ExamCard extends StatelessWidget {
   const _ExamCard({required this.exam});
-  final _ExamItem exam;
+  final Exam exam;
 
   @override
   Widget build(BuildContext context) {
-    final live = exam.status == ExamTab.live;
-    final archived = exam.status == ExamTab.archive;
+    final status = _ExamCalendarScreenState._statusFor(exam);
+    final live = status == ExamTab.live;
+    final archived = status == ExamTab.archive;
     final color = live ? Colors.green : (archived ? Colors.red : Colors.orange);
     final label = live ? 'Live' : (archived ? 'Ended' : 'Upcoming');
     return Card(
@@ -230,7 +227,7 @@ class _ExamCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 5),
-            Text(exam.category,
+            Text(exam.topicName ?? 'সকল বিষয়',
                 style: const TextStyle(color: AppConstants.mutedText)),
             const Divider(height: 18),
             Row(
@@ -241,19 +238,28 @@ class _ExamCard extends StatelessWidget {
                 const Icon(Icons.access_time,
                     size: 16, color: AppConstants.mutedText),
                 const SizedBox(width: 5),
-                Text(_formatDateTime(exam.date)),
+                Text(_formatDateTime(exam.startsAt ?? DateTime.now())),
                 const SizedBox(width: 16),
                 const Icon(Icons.people_outline,
                     size: 17, color: AppConstants.mutedText),
                 const SizedBox(width: 5),
-                Text('${exam.participants} জন'),
+                Text('${exam.totalMarks.toStringAsFixed(0)} নম্বর'),
                 const Spacer(),
-                FilledButton(
-                  onPressed: () => _showAction(
-                      context, archived ? 'ফলাফল দেখুন' : 'পরীক্ষা শুরু করুন'),
-                  child: Text(archived
-                      ? 'ফলাফল'
-                      : (live ? 'Start Exam' : 'রিমাইন্ডার')),
+                SizedBox(
+                  width: 96,
+                  height: 42,
+                  child: FilledButton(
+                    onPressed: () => _showAction(
+                        context, archived ? 'ফলাফল দেখুন' : 'পরীক্ষা শুরু করুন'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
+                    child: Text(archived
+                        ? 'ফলাফল'
+                        : (live ? 'Start Exam' : 'রিমাইন্ডার')),
+                  ),
                 ),
               ],
             ),
@@ -277,18 +283,3 @@ class _ExamCard extends StatelessWidget {
   }
 }
 
-class _ExamItem {
-  const _ExamItem({
-    required this.title,
-    required this.category,
-    required this.date,
-    required this.participants,
-    required this.status,
-  });
-
-  final String title;
-  final String category;
-  final DateTime date;
-  final int participants;
-  final ExamTab status;
-}
