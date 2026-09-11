@@ -15,18 +15,18 @@ class HomeScreen extends ConsumerWidget {
 
   static const _categories = <({String title, IconData icon})>[
     
+    (title: 'BCS প্রস্তুতি', icon: Icons.school),
     (title: 'SSC', icon: Icons.school),
     (title: 'HSC', icon: Icons.account_balance),
     (title: 'Varsity', icon: Icons.school),
     (title: 'Medical', icon: Icons.account_balance),
     (title: 'Engineering', icon: Icons.school),
+    (title: 'Science & Technology', icon: Icons.badge),
     (title: 'Agriculture', icon: Icons.account_balance),
-    (title: 'BCS প্রস্তুতি', icon: Icons.school),
     (title: 'ব্যাংক জব', icon: Icons.account_balance),
     (title: 'সরকারি চাকরি', icon: Icons.work),
-    (title: 'নন-ক্যাডার', icon: Icons.badge),
     (title: 'প্রাইমারি', icon: Icons.child_care),
-    (title: 'ভর্তি পরীক্ষা', icon: Icons.how_to_reg),
+    
   ];
 
   @override
@@ -56,7 +56,27 @@ class HomeScreen extends ConsumerWidget {
             children: [
               const _PackageBanner(),
               const SizedBox(height: 24),
-              const _SectionHeader(title: 'পরীক্ষা সেকশন'),
+              const _SectionHeader(title: 'সাম্প্রতিক পরীক্ষা'),
+              const SizedBox(height: 12),
+              examsAsync.when(
+                data: (exams) => ExamList(exams: exams),
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (error, _) => ErrorCard(message: error.toString()),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: 'Study & Subject Care'),
+              const SizedBox(height: 12),
+              _CategoryGrid(
+                categories: _categories,
+                onCategoryTap: (category) => context.go(
+                  '/subject-catalog?category=${Uri.encodeComponent(category)}',
+                ),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: 'Question Bank'),
               const SizedBox(height: 12),
               _CategoryGrid(
                 categories: _categories,
@@ -73,17 +93,6 @@ class HomeScreen extends ConsumerWidget {
                   subject,
                   'এই বিষয়ের স্টাডি কনটেন্ট খুব শীঘ্রই যুক্ত হবে।',
                 ),
-              ),
-              const SizedBox(height: 24),
-              const _SectionHeader(title: 'সাম্প্রতিক পরীক্ষা'),
-              const SizedBox(height: 12),
-              examsAsync.when(
-                data: (exams) => ExamList(exams: exams),
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, _) => ErrorCard(message: error.toString()),
               ),
               const SizedBox(height: 24),
             ],

@@ -23,14 +23,13 @@ class _AdminExamFormState extends State<AdminExamForm> {
   final _marks = TextEditingController(text: '50');
   final _negative = TextEditingController(text: '0.25');
   final _duration = TextEditingController(text: '60');
+  final _questionSearch = TextEditingController();
   String? _topicId;
+  String? _subtopicFilterId;
+  String _searchQuery = '';
   DateTime? _startsAt;
   DateTime? _endsAt;
   bool _isLive = false;
-  bool _questionBankMode = false;
-  String? _sourceExamId;
-  bool _loadingSourceExams = false;
-  List<Exam> _sourceExams = [];
   bool _loadingQuestions = false;
   bool _saving = false;
   String? _error;
@@ -44,6 +43,7 @@ class _AdminExamFormState extends State<AdminExamForm> {
     _marks.dispose();
     _negative.dispose();
     _duration.dispose();
+    _questionSearch.dispose();
     super.dispose();
   }
 
@@ -61,15 +61,26 @@ class _AdminExamFormState extends State<AdminExamForm> {
     final uniqueTopics = <String, TopicNode>{
       for (final topic in flatTopics) topic.id: topic,
     }.values.toList();
-    final uniqueExams = <String, Exam>{
-      for (final exam in _sourceExams) exam.id: exam,
-    }.values.toList();
-    final selectedExamId = uniqueExams.any((exam) => exam.id == _sourceExamId)
-        ? _sourceExamId
-        : null;
     final selectedTopicId = uniqueTopics.any((topic) => topic.id == _topicId)
         ? _topicId
         : null;
+    final selectedTopicIds = selectedTopicId == null
+        ? <String>{}
+        : _descendantTopicIds(widget.topics, selectedTopicId);
+    final subtopics = selectedTopicId == null
+        ? <TopicNode>[]
+        : _collectSubtopics(widget.topics, selectedTopicId);
+    final filteredQuestions = _questions.where((question) {
+      final matchesTopic = selectedTopicIds.contains(question.topicId);
+      final matchesSubtopic = _subtopicFilterId == null ||
+          question.topicId == _subtopicFilterId;
+      final haystack = '${question.questionText} ${question.topicName ?? ''} '
+          '${question.examType ?? ''} ${question.questionSet ?? ''}'
+          .toLowerCase();
+      final matchesSearch =
+          _searchQuery.isEmpty || haystack.contains(_searchQuery);
+      return matchesTopic && matchesSubtopic && matchesSearch;
+    }).toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -84,39 +95,6 @@ class _AdminExamFormState extends State<AdminExamForm> {
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('নতুন পরীক্ষা')),
-                    ButtonSegment(value: true, label: Text('Previous Question Bank')),
-                  ],
-                  selected: {_questionBankMode},
-                  onSelectionChanged: (value) {
-                    setState(() => _questionBankMode = value.first);
-                    if (value.first && _sourceExams.isEmpty) _loadSourceExams();
-                  },
-                ),
-                const SizedBox(height: 12),
-                if (_questionBankMode) ...[
-                  DropdownButtonFormField<String>(
-                    value: selectedExamId,
-                    decoration: const InputDecoration(
-                      labelText: 'কোন exam-কে question bank করবেন?',
-                    ),
-                    items: [
-                      for (final exam in uniqueExams)
-                        DropdownMenuItem(value: exam.id, child: Text(exam.title)),
-                    ],
-                    onChanged: _loadSourceExam,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _loadingSourceExams
-                        ? 'Exam list লোড হচ্ছে...'
-                        : 'Selected exam-এর প্রশ্নগুলো নিচে question bank হিসেবে ব্যবহার করুন।',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                  const SizedBox(height: 10),
-                ],
                 TextField(
                   controller: _title,
                   decoration: const InputDecoration(labelText: 'পরীক্ষার নাম'),
@@ -133,11 +111,48 @@ class _AdminExamFormState extends State<AdminExamForm> {
                   onChanged: (value) {
                     setState(() {
                       _topicId = value;
+                      _subtopicFilterId = value;
+                      _searchQuery = '';
+                      _questionSearch.clear();
                       _selected.clear();
                     });
                     _loadQuestions(value);
                   },
                 ),
+                if (selectedTopicId != null && subtopics.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Quick subtopic filter',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('সব'),
+                        selected: _subtopicFilterId == selectedTopicId,
+                        onSelected: (_) => setState(() => _subtopicFilterId = selectedTopicId),
+                      ),
+                      for (final subtopic in subtopics)
+                        ChoiceChip(
+                          label: Text(subtopic.name),
+                          selected: _subtopicFilterId == subtopic.id,
+                          onSelected: (_) => setState(() => _subtopicFilterId = subtopic.id),
+                        ),
+                    ],
+                  ),
+                ],
+                if (selectedTopicId != null) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _questionSearch,
+                    onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+                    decoration: const InputDecoration(
+                      labelText: 'MCQ খুঁজুন',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -196,10 +211,15 @@ class _AdminExamFormState extends State<AdminExamForm> {
                   const Center(child: CircularProgressIndicator())
                 else if (_topicId == null)
                   const Text('প্রথমে একটি topic নির্বাচন করুন')
-                else if (_questions.isEmpty)
-                  const Text('এই topic-এ কোনো প্রশ্ন পাওয়া যায়নি')
-                else
-                  for (final question in _questions)
+                else if (filteredQuestions.isEmpty)
+                  const Text('এই topic/subtopic-এ কোনো প্রশ্ন পাওয়া যায়নি')
+                else ...[
+                  Text(
+                    'প্রদর্শিত প্রশ্ন: ${filteredQuestions.length} / ${_questions.length}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final question in filteredQuestions)
                     CheckboxListTile(
                       value: _selected.contains(question.id),
                       onChanged: (value) => setState(() {
@@ -217,6 +237,7 @@ class _AdminExamFormState extends State<AdminExamForm> {
                       ),
                       controlAffinity: ListTileControlAffinity.leading,
                     ),
+                ],
                 const SizedBox(height: 10),
                 if (_error != null)
                   Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -252,7 +273,12 @@ class _AdminExamFormState extends State<AdminExamForm> {
     });
     try {
       final questions = await QuestionService(apiClient).list(topicId: topicId);
-      if (mounted) setState(() => _questions = questions);
+      if (mounted) {
+        setState(() {
+          _questions = questions;
+          _subtopicFilterId = topicId;
+        });
+      }
     } catch (error) {
       if (mounted) setState(() => _error = 'প্রশ্ন লোড ব্যর্থ: $error');
     } finally {
@@ -260,37 +286,56 @@ class _AdminExamFormState extends State<AdminExamForm> {
     }
   }
 
-  Future<void> _loadSourceExams() async {
-    setState(() => _loadingSourceExams = true);
-    try {
-      final exams = await ExamService(apiClient).list();
-      if (mounted) setState(() => _sourceExams = exams);
-    } catch (error) {
-      if (mounted) setState(() => _error = 'Exam list লোড ব্যর্থ: $error');
-    } finally {
-      if (mounted) setState(() => _loadingSourceExams = false);
+  Set<String> _descendantTopicIds(List<TopicNode> roots, String rootId) {
+    final ids = <String>{};
+
+    void collectChildren(TopicNode node, Set<String> acc) {
+      acc.add(node.id);
+      for (final child in node.children) {
+        collectChildren(child, acc);
+      }
     }
+
+    void visit(List<TopicNode> nodes) {
+      for (final node in nodes) {
+        if (node.id == rootId) {
+          ids.add(node.id);
+          for (final child in node.children) {
+            collectChildren(child, ids);
+          }
+          return;
+        }
+        visit(node.children);
+      }
+    }
+
+    visit(roots);
+    return ids;
   }
 
-  Future<void> _loadSourceExam(String? examId) async {
-    if (examId == null) return;
-    setState(() {
-      _sourceExamId = examId;
-      _loadingQuestions = true;
-      _selected.clear();
-    });
-    try {
-      final exam = await ExamService(apiClient).getById(examId);
-      if (!mounted) return;
-      setState(() {
-        _questions = exam.questions;
-        _topicId = exam.topicId;
-      });
-    } catch (error) {
-      if (mounted) setState(() => _error = 'Exam questions লোড ব্যর্থ: $error');
-    } finally {
-      if (mounted) setState(() => _loadingQuestions = false);
+  List<TopicNode> _collectSubtopics(List<TopicNode> roots, String rootId) {
+    final matches = <TopicNode>[];
+    void visit(List<TopicNode> nodes) {
+      for (final node in nodes) {
+        if (node.id == rootId) {
+          matches.addAll(_flatten(node.children));
+          return;
+        }
+        visit(node.children);
+      }
     }
+
+    visit(roots);
+    return matches;
+  }
+
+  List<TopicNode> _flatten(List<TopicNode> nodes) {
+    final flat = <TopicNode>[];
+    for (final node in nodes) {
+      flat.add(node);
+      flat.addAll(_flatten(node.children));
+    }
+    return flat;
   }
 
   Future<void> _pickDate({required bool start}) async {
