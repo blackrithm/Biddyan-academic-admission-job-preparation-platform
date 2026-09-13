@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+import '../widgets/interactive_question_card.dart';
 
 class SubjectPracticeScreen extends StatefulWidget {
   const SubjectPracticeScreen({super.key, this.topicId, this.topicName, this.showAll = false});
@@ -236,7 +237,7 @@ class _QuestionSetSheetContent extends StatelessWidget {
                           controller: scrollController,
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
                           itemCount: rows.length,
-                          itemBuilder: (context, index) => _InteractiveQuestionCard(
+                          itemBuilder: (context, index) => InteractiveQuestionCard(
                             index: index + 1,
                             question: rows[index],
                           ),

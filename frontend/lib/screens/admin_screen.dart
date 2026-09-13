@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'admin_question_form.dart';
+import 'admin_question_bank.dart';
 import 'admin_exam_form.dart';
 import 'admin_topics.dart';
 import '../widgets/brand_navigation.dart';
@@ -77,6 +78,11 @@ class _TabbedAdminState extends ConsumerState<_TabbedAdmin> {
                 icon: Icon(Icons.event),
                 label: Text('পরীক্ষা তৈরি'),
               ),
+              ButtonSegment(
+                value: 3,
+                icon: Icon(Icons.library_books),
+                label: Text('Question Bank'),
+              ),
             ],
             selected: {_section},
             onSelectionChanged: (selection) =>
@@ -89,10 +95,12 @@ class _TabbedAdminState extends ConsumerState<_TabbedAdmin> {
                 ? TopicsPanel(topics: rows, notifier: notifier)
                 : _section == 1
                     ? AdminQuestionForm(topics: rows)
-                    : AdminExamForm(
+                    : _section == 2
+                        ? AdminExamForm(
                         topics: rows,
                         onCreated: () => ref.invalidate(examsProvider),
-                      ),
+                          )
+                        : AdminQuestionBank(topics: rows),
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => _ErrorCard(message: error.toString()),
           ),

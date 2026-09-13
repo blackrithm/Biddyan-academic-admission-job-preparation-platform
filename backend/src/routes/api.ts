@@ -31,6 +31,9 @@ router.delete('/questions/:id', requireAdmin, QuestionController.deleteQuestion)
 
 // --- EXAMS ENGINE ROUTES ---
 router.post('/exams', requireAdmin, ExamController.createExam);
+// Practice exams generated from a published question set are available to
+// guests as well as signed-in users.
+router.post('/exams/from-question-set', ExamController.createExam);
 router.get('/exams', ExamController.getExams);
 router.get('/exams/:id', ExamController.getExamById);
 router.post('/exams/generate-dynamic', ExamController.generateDynamicExam);

@@ -314,7 +314,9 @@ export class ExamController {
       }
 
       const questionsQuery = `
-        SELECT q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.previous_years, q.difficulty_level
+         SELECT q.id, q.topic_id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d,
+           q.correct_option, q.explanation, q.previous_years, q.difficulty_level,
+           q.exam_type, q.question_set, q.source
         FROM exam_questions eq
         JOIN questions q ON eq.question_id = q.id
         WHERE eq.exam_id = $1;

@@ -185,6 +185,26 @@ class ExamService {
     return Exam.fromJson(json as Map<String, dynamic>);
   }
 
+  Future<Exam> createFromQuestionSet({
+    required String title,
+    required List<String> questionIds,
+    String? topicId,
+    double totalMarks = 0,
+    double negativeMarking = 0.25,
+    int duration = 60,
+  }) async {
+    final json = await client.post('exams/from-question-set', body: {
+      'title': title,
+      'topicId': topicId,
+      'totalMarks': totalMarks > 0 ? totalMarks : questionIds.length,
+      'negativeMarking': negativeMarking,
+      'duration': duration,
+      'isLive': false,
+      'questionIds': questionIds,
+    });
+    return Exam.fromJson(json as Map<String, dynamic>);
+  }
+
   Future<List<Exam>> list() async {
     try {
       final json = await client.get('exams');
@@ -200,13 +220,13 @@ class ExamService {
     try {
       final json = await client.get('exams/$id');
       final payload = json as Map<String, dynamic>;
-      final exam = Map<String, dynamic>.from(
-        payload['exam'] as Map<String, dynamic>,
-      );
+      final exam = payload['exam'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(payload['exam'] as Map<String, dynamic>)
+          : Map<String, dynamic>.from(payload);
       exam['questions'] = payload['questions'] ?? const [];
       return Exam.fromJson(exam);
-    } catch (_) {
-      return MockData.mockExam.copyWith(id: id);
+    } catch (error) {
+      throw ApiException('Exam লোড করা যায়নি: $error');
     }
   }
 

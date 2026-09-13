@@ -27,14 +27,26 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
     _catalog = _loadCatalog();
   }
 
+  @override
+  void didUpdateWidget(covariant SubjectCatalogScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.categoryName != widget.categoryName) {
+      final catalog = _loadCatalog();
+      setState(() {
+        _catalog = catalog;
+      });
+    }
+  }
+
   Future<_CatalogData> _loadCatalog() async {
     final topics = await TopicService(apiClient).getTree();
     final questions = await QuestionService(apiClient).list();
+    final requestedCategory = _canonicalCategory(widget.categoryName);
 
     TopicNode? findCategory(List<TopicNode> nodes) {
       for (final node in nodes) {
-        if (widget.categoryName == null ||
-            node.name.toLowerCase() == widget.categoryName!.toLowerCase()) {
+        if (requestedCategory == null ||
+            node.name.toLowerCase() == requestedCategory) {
           return node;
         }
         final match = findCategory(node.children);
@@ -62,14 +74,26 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
     }
 
     collectIds(category);
+    final categoryName = category.name.toLowerCase();
     return _CatalogData(
       category: category,
       categories: topics,
       topics: [category],
       questions: questions
-          .where((question) => categoryIds.contains(question.topicId))
+          .where((question) =>
+            categoryIds.contains(question.topicId) ||
+            question.topicName?.toLowerCase() == categoryName)
           .toList(),
     );
+  }
+
+  String? _canonicalCategory(String? name) {
+    if (name == null) return null;
+    return switch (name.trim().toLowerCase()) {
+      'bcs প্রস্তুতি' => 'bcs',
+      'ব্যাংক জব' => 'bank',
+      _ => name.trim().toLowerCase(),
+    };
   }
 
   @override
@@ -252,11 +276,23 @@ class _QuestionBankSets extends StatelessWidget {
   Widget build(BuildContext context) {
     final examTypes = <String>{};
     final previousYears = <String>{};
+    final questionSets = <String>{};
     for (final question in questions) {
       if (question.examType?.isNotEmpty == true) examTypes.add(question.examType!);
       previousYears.addAll(question.previousYears);
+      if (question.questionSet?.isNotEmpty == true) {
+        questionSets.add(question.questionSet!);
+      }
     }
     final entries = <_QuestionBankEntry>[
+      for (final set in questionSets)
+        _QuestionBankEntry(
+          label: set,
+          caption: 'Question Set',
+          questions: questions
+              .where((question) => question.questionSet == set)
+              .toList(),
+        ),
       for (final type in examTypes)
         _QuestionBankEntry(
           label: type,
@@ -270,6 +306,7 @@ class _QuestionBankSets extends StatelessWidget {
           questions: questions.where((question) => question.previousYears.contains(year)).toList(),
         ),
     ];
+      final visibleEntries = entries.take(3).toList();
 
     return Card(
       color: AppConstants.primary.withValues(alpha: 0.08),
@@ -278,9 +315,23 @@ class _QuestionBankSets extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${categoryName ?? 'Active Category'} Question Bank Sets',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${categoryName ?? 'Active Category'} Question Bank Sets',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (categoryName != null)
+                  TextButton.icon(
+                    onPressed: () => context.push(
+                      '/question-bank?category=${Uri.encodeComponent(categoryName!)}',
+                    ),
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text('View all question sets'),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             if (entries.isEmpty)
@@ -288,7 +339,7 @@ class _QuestionBankSets extends StatelessWidget {
                 padding: EdgeInsets.all(12),
                 child: Text('এই category-তে এখনো কোনো question bank যোগ করা হয়নি।'),
               ),
-            for (final entry in entries)
+            for (final entry in visibleEntries)
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
@@ -841,7 +892,7 @@ class _TopicActionCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _TopicButton(
-                    label: 'Random Quiz',
+                    label: 'Create Exam',
                     background: const Color(0xFFE2E7EF),
                     onPressed: questionCount == 0 ? null : onRandomExam,
                   ),

@@ -13,6 +13,7 @@ import '../screens/subject_practice_screen.dart';
 import '../screens/subject_catalog_screen.dart';
 import '../screens/app_section_screen.dart';
 import '../screens/previous_question_bank_screen.dart';
+import '../screens/question_bank_sets_screen.dart';
 import '../services/services.dart';
 
 /// Declarative GoRouter configuration.
@@ -57,6 +58,12 @@ final router = GoRouter(
     GoRoute(
       path: '/previous-question-bank',
       builder: (context, state) => const PreviousQuestionBankScreen(),
+    ),
+    GoRoute(
+      path: '/question-bank',
+      builder: (context, state) => QuestionBankSetsScreen(
+        category: state.uri.queryParameters['category'] ?? 'Question Bank',
+      ),
     ),
     GoRoute(
       path: '/exam-calendar',
@@ -136,7 +143,8 @@ class _ExamGateState extends ConsumerState<_ExamGate> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_error == null && !ref.read(examSessionNotifierProvider).isLoaded) {
+    final loadedExamId = ref.read(examSessionNotifierProvider).exam?.id;
+    if (_error == null && loadedExamId != widget.examId) {
       _load();
     }
   }

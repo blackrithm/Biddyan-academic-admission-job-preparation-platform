@@ -227,12 +227,12 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Bulk JSON import',
+                      'Question Bank Set Bulk Upload',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'একই নির্বাচিত বিভাগে একসাথে একাধিক MCQ যোগ করুন।',
+                      'উপরের category এবং Question set নির্বাচন করে সরাসরি একটি সম্পূর্ণ প্রশ্ন সেট upload করুন।',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: 10),
@@ -249,7 +249,7 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                     OutlinedButton.icon(
                       onPressed: _bulkImport,
                       icon: const Icon(Icons.upload_file),
-                      label: const Text('JSON থেকে সংরক্ষণ করুন'),
+                      label: const Text('Question set upload করুন'),
                     ),
                   ],
                 ),
@@ -349,10 +349,18 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
         setState(() => _error = 'প্রথমে বিভাগ নির্বাচন করুন');
         return;
       }
+      if (_questionSetCtrl.text.trim().isEmpty) {
+        setState(() => _error = 'Question set-এর নাম দিন');
+        return;
+      }
       try {
         final decoded = jsonDecode(_bulkJsonCtrl.text);
-        if (decoded is! List) {
-          throw const FormatException('JSON array দিন');
+        final payload = decoded is Map
+            ? Map<String, dynamic>.from(decoded)
+            : <String, dynamic>{'questions': decoded};
+        final rawQuestions = payload['questions'];
+        if (rawQuestions is! List) {
+          throw const FormatException('questions array দিন');
         }
         setState(() {
           _saving = true;
@@ -360,7 +368,7 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
           _success = null;
         });
         final items = <Map<String, dynamic>>[];
-        for (final item in decoded) {
+        for (final item in rawQuestions) {
           if (item is! Map) {
             throw const FormatException('প্রতিটি item JSON object হতে হবে');
           }
@@ -371,8 +379,8 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
           topicId: _topicId!,
           questions: items,
           defaults: {
-            'exam_type': _examTypeCtrl.text.trim(),
-            'question_set': _questionSetCtrl.text.trim(),
+            'exam_type': (payload['exam_type'] ?? _examTypeCtrl.text).toString().trim(),
+            'question_set': (payload['question_set'] ?? _questionSetCtrl.text).toString().trim(),
             'difficulty_level': _difficulty,
             'source': _sourceCtrl.text.trim().isEmpty
                 ? 'bulk'

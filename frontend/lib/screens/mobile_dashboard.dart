@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
+import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
 
 class MobileDashboard extends ConsumerStatefulWidget {
@@ -142,6 +144,152 @@ class _DashboardHome extends StatelessWidget {
       ],
     );
   }
+}
+
+class _QuestionBankSection extends StatefulWidget {
+  const _QuestionBankSection();
+
+  @override
+  State<_QuestionBankSection> createState() => _QuestionBankSectionState();
+}
+
+class _QuestionBankSectionState extends State<_QuestionBankSection> {
+  late Future<_QuestionBankData> _data;
+  String? _selectedCategory;
+
+  static const _categories = [
+    'SSC',
+    'HSC',
+    'Varsity',
+    'Medical',
+    'Engineering',
+    'Agriculture',
+    'BCS প্রস্তুতি',
+    'শিক্ষক নিবন্ধন',
+    'বার কাউন্সিল',
+    'ব্যাংক জব',
+    'সরকারি চাকরি',
+    'নন-ক্যাডার',
+    'ভর্তি পরীক্ষা',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _data = _loadData();
+  }
+
+  Future<_QuestionBankData> _loadData() async {
+    final topics = await TopicService(apiClient).getTree();
+    final questions = await QuestionService(apiClient).list();
+    return _QuestionBankData(topics: topics, questions: questions);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_QuestionBankData>(
+      future: _data,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final data = snapshot.data;
+        if (data == null) return const Text('Question Bank লোড করা যায়নি।');
+        final selectedQuestions = _questionsForCategory(
+          data,
+          _selectedCategory,
+        );
+        final sets = <String, int>{};
+        for (final question in selectedQuestions) {
+          final setName = question.questionSet?.trim();
+          if (setName != null && setName.isNotEmpty) {
+            sets[setName] = (sets[setName] ?? 0) + 1;
+          }
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FeatureGrid(
+              items: [
+                for (final category in _categories)
+                  (category, FontAwesomeIcons.bookOpen),
+              ],
+              onTap: (category) => context.push(
+                '/question-bank?category=${Uri.encodeComponent(category)}',
+              ),
+            ),
+            if (_selectedCategory != null) ...[
+              const SizedBox(height: 14),
+              Text(
+                '${_selectedCategory!} Question Sets',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              if (sets.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('এই category-তে এখনো কোনো question set upload করা হয়নি।'),
+                  ),
+                )
+              else
+                _FeatureGrid(
+                  items: [
+                    for (final entry in sets.entries)
+                      ('${entry.key} (${entry.value}টি)', FontAwesomeIcons.listCheck),
+                  ],
+                  onTap: (_) => context.push('/previous-question-bank'),
+                ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  List<Question> _questionsForCategory(
+    _QuestionBankData data,
+    String? categoryName,
+  ) {
+    if (categoryName == null) return const [];
+    final aliases = <String, String>{
+      'BCS প্রস্তুতি': 'BCS',
+      'ব্যাংক জব': 'Bank',
+    };
+    final target = (aliases[categoryName] ?? categoryName).toLowerCase();
+    final topicIds = <String>{};
+
+    void visit(List<TopicNode> nodes) {
+      for (final node in nodes) {
+        if (node.name.toLowerCase() == target) {
+          void collect(TopicNode item) {
+            topicIds.add(item.id);
+            for (final child in item.children) {
+              collect(child);
+            }
+          }
+          collect(node);
+        }
+        visit(node.children);
+      }
+    }
+
+    visit(data.topics);
+    return data.questions.where((question) {
+      return topicIds.contains(question.topicId) ||
+          question.topicName?.toLowerCase() == target;
+    }).toList();
+  }
+}
+
+class _QuestionBankData {
+  const _QuestionBankData({required this.topics, required this.questions});
+
+  final List<TopicNode> topics;
+  final List<Question> questions;
 }
 
 class _SectionTitle extends StatelessWidget {

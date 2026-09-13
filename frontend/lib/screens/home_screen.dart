@@ -67,16 +67,34 @@ class HomeScreen extends ConsumerWidget {
                 error: (error, _) => ErrorCard(message: error.toString()),
               ),
               const SizedBox(height: 24),
-              const _SectionHeader(title: 'Study & Subject Care'),
+              const _SectionHeader(title: 'Question Bank'),
               const SizedBox(height: 12),
-              _CategoryGrid(
-                categories: _categories,
-                onCategoryTap: (category) => context.go(
-                  '/subject-catalog?category=${Uri.encodeComponent(category)}',
-                ),
+              FutureBuilder<List<TopicNode>>(
+                future: TopicService(apiClient).getTree(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final categories = snapshot.data ?? const <TopicNode>[];
+                  if (categories.isEmpty) {
+                    return const Text('এখনো কোনো question bank category যোগ করা হয়নি।');
+                  }
+                  return _CategoryGrid(
+                    categories: [
+                      for (final category in categories)
+                        (title: category.name, icon: _categoryIcon(category.name)),
+                    ],
+                    onCategoryTap: (category) => context.go(
+                      '/subject-catalog?category=${Uri.encodeComponent(category)}',
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
-              const _SectionHeader(title: 'Question Bank'),
+              const _SectionHeader(title: 'Study & Subject Care'),
               const SizedBox(height: 12),
               _CategoryGrid(
                 categories: _categories,
@@ -101,6 +119,19 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+IconData _categoryIcon(String name) {
+  final value = name.toLowerCase();
+  if (value.contains('medical')) return Icons.local_hospital;
+  if (value.contains('engineering')) return Icons.settings;
+  if (value.contains('bank')) return Icons.account_balance;
+  if (value.contains('job') || value.contains('চাকরি')) return Icons.work;
+  if (value.contains('agri')) return Icons.eco;
+  if (value.contains('school') || value.contains('ssc') || value.contains('hsc')) {
+    return Icons.school;
+  }
+  return Icons.menu_book;
 }
 
 void _showSectionMessage(
