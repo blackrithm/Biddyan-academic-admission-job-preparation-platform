@@ -36,6 +36,94 @@ class AuthUser {
   }
 }
 
+class UserProfile {
+  const UserProfile({
+    required this.id,
+    required this.phoneNumber,
+    required this.displayName,
+    this.email,
+    this.profileImageUrl,
+    this.preparationCategories = const [],
+    this.notificationsEnabled = true,
+    this.preferredLanguage = 'বাংলা',
+  });
+
+  final String id;
+  final String phoneNumber;
+  final String displayName;
+  final String? email;
+  final String? profileImageUrl;
+  final List<String> preparationCategories;
+  final bool notificationsEnabled;
+  final String preferredLanguage;
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
+        id: json['id'] as String,
+        phoneNumber: json['phone_number'] as String? ?? '',
+        displayName: json['display_name'] as String? ?? 'শিক্ষার্থী',
+        email: json['email'] as String?,
+        profileImageUrl: json['profile_image_url'] as String?,
+        preparationCategories:
+            (json['preparation_categories'] as List<dynamic>? ?? const [])
+                .map((item) => item.toString())
+                .toList(),
+        notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
+        preferredLanguage: json['preferred_language'] as String? ?? 'বাংলা',
+      );
+}
+
+class ProfileStats {
+  const ProfileStats({
+    required this.totalExams,
+    required this.totalQuestionsRead,
+    required this.totalPracticeExams,
+    required this.totalLiveExams,
+    required this.totalPassedExams,
+    required this.failedOrIncompleteExams,
+    required this.totalRightAnswers,
+    required this.totalWrongAnswers,
+    required this.totalSkippedAnswers,
+    required this.totalStudyMinutes,
+    required this.totalContribution,
+    this.overallRank,
+  });
+
+  final int totalExams;
+  final int totalQuestionsRead;
+  final int totalPracticeExams;
+  final int totalLiveExams;
+  final int totalPassedExams;
+  final int failedOrIncompleteExams;
+  final int totalRightAnswers;
+  final int totalWrongAnswers;
+  final int totalSkippedAnswers;
+  final int totalStudyMinutes;
+  final int totalContribution;
+  final int? overallRank;
+
+  factory ProfileStats.fromJson(Map<String, dynamic> json) => ProfileStats(
+        totalExams: (json['total_exams'] as num?)?.toInt() ?? 0,
+        totalQuestionsRead:
+            (json['total_questions_read'] as num?)?.toInt() ?? 0,
+        totalPracticeExams: (json['total_practice_exams'] as num?)?.toInt() ?? 0,
+        totalLiveExams: (json['total_live_exams'] as num?)?.toInt() ?? 0,
+        totalPassedExams: (json['total_passed_exams'] as num?)?.toInt() ?? 0,
+        failedOrIncompleteExams:
+          (json['failed_or_incomplete_exams'] as num?)?.toInt() ?? 0,
+        totalRightAnswers:
+          (json['total_right_answers'] as num?)?.toInt() ?? 0,
+        totalWrongAnswers:
+          (json['total_wrong_answers'] as num?)?.toInt() ?? 0,
+        totalSkippedAnswers:
+          (json['total_skipped_answers'] as num?)?.toInt() ?? 0,
+        totalStudyMinutes:
+          (json['total_study_minutes'] as num?)?.toInt() ?? 0,
+        totalContribution:
+          (json['total_contribution'] as num?)?.toInt() ?? 0,
+        overallRank: (json['overall_rank'] as num?)?.toInt(),
+      );
+}
+
 class TopicNode {
   const TopicNode({
     required this.id,
@@ -126,6 +214,7 @@ class Exam {
     required this.id,
     required this.title,
     required this.totalMarks,
+    required this.passMark,
     required this.negativeMarking,
     required this.durationMinutes,
     required this.isLive,
@@ -142,6 +231,7 @@ class Exam {
   final String? topicId;
   final String? topicName;
   final double totalMarks;
+  final double passMark;
   final double negativeMarking;
   final int durationMinutes;
   final bool isLive;
@@ -159,6 +249,7 @@ class Exam {
       startsAt: _parseDate(json['starts_at']),
       endsAt: _parseDate(json['ends_at']),
       totalMarks: double.parse((json['total_marks'] ?? 0).toString()),
+      passMark: double.parse((json['pass_mark'] ?? 0).toString()),
       negativeMarking:
           double.parse((json['negative_marking_per_wrong'] ?? 0).toString()),
       durationMinutes: json['duration_minutes'] as int,
@@ -176,6 +267,7 @@ class Exam {
     String? topicId,
     String? topicName,
     double? totalMarks,
+    double? passMark,
     double? negativeMarking,
     int? durationMinutes,
     bool? isLive,
@@ -190,6 +282,7 @@ class Exam {
       topicId: topicId ?? this.topicId,
       topicName: topicName ?? this.topicName,
       totalMarks: totalMarks ?? this.totalMarks,
+      passMark: passMark ?? this.passMark,
       negativeMarking: negativeMarking ?? this.negativeMarking,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       isLive: isLive ?? this.isLive,

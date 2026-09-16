@@ -30,6 +30,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
   Future<_QuestionBankPageData> _load() async {
     final topics = await TopicService(apiClient).getTree();
     final questions = await QuestionService(apiClient).list();
+    final exams = await ExamService(apiClient).list();
     final topicIds = <String>{};
     final target = _alias(widget.category).toLowerCase();
 
@@ -53,7 +54,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
       return topicIds.contains(question.topicId) ||
           question.topicName?.toLowerCase() == categoryName;
     }).toList();
-    return _QuestionBankPageData(questions: filtered);
+    return _QuestionBankPageData(questions: filtered, exams: exams);
   }
 
   String _alias(String category) {
@@ -82,6 +83,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           final questions = snapshot.data?.questions ?? const <Question>[];
+          final exams = snapshot.data?.exams ?? const <Exam>[];
           final sets = <String, List<Question>>{};
           for (final question in questions) {
             final name = question.questionSet?.trim();
@@ -156,6 +158,11 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                           const SizedBox(height: 5),
                           Text('প্রশ্ন ব্যাংক: ${entry.value.length}টি প্রশ্ন',
                               style: const TextStyle(color: AppConstants.mutedText)),
+                          if (_examForSet(exams, entry.key) case final exam?)
+                            Text(
+                              'মোট ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ভুল উত্তরে ${exam.negativeMarking} কাটা যাবে',
+                              style: const TextStyle(color: AppConstants.mutedText),
+                            ),
                           const SizedBox(height: 10),
                           Row(
                             children: [
@@ -230,6 +237,14 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
   ) async {
     if (questions.isEmpty) return;
     try {
+      final existingExam = _examForSet(
+        (await ExamService(apiClient).list()),
+        name,
+      );
+      if (existingExam != null && context.mounted) {
+        context.push('/exam/${existingExam.id}');
+        return;
+      }
       final exam = await ExamService(apiClient).createFromQuestionSet(
         title: '${widget.category} - $name',
         topicId: questions.first.topicId,
@@ -245,6 +260,15 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
         );
       }
     }
+  }
+
+  Exam? _examForSet(List<Exam> exams, String name) {
+    for (final exam in exams) {
+      if (exam.title == name || exam.title == '${widget.category} - $name') {
+        return exam;
+      }
+    }
+    return null;
   }
 }
 
@@ -272,8 +296,9 @@ class _QuestionSetReaderPage extends StatelessWidget {
 }
 
 class _QuestionBankPageData {
-  const _QuestionBankPageData({required this.questions});
+  const _QuestionBankPageData({required this.questions, required this.exams});
 
   final List<Question> questions;
+  final List<Exam> exams;
 }
 

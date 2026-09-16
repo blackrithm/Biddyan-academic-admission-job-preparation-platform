@@ -21,6 +21,19 @@ export class AuthController {
       [phoneNumber, passwordHash],
     );
     console.log(`Admin account ready for ${phoneNumber}`);
+
+    const demoStudentPhone = process.env.DEMO_STUDENT_PHONE || '01234567899';
+    const demoStudentPassword = process.env.DEMO_STUDENT_PASSWORD || 'student123';
+    const demoStudentHash = await bcrypt.hash(demoStudentPassword, 12);
+    await pool.query(
+      `INSERT INTO users (phone_number, password_hash, display_name, role)
+       VALUES ($1, $2, 'Demo Student', 'student')
+       ON CONFLICT (phone_number)
+       DO UPDATE SET password_hash = EXCLUDED.password_hash,
+                     role = EXCLUDED.role`,
+      [demoStudentPhone, demoStudentHash],
+    );
+    console.log(`Demo student account ready for ${demoStudentPhone}`);
   }
 
   static async register(req: Request, res: Response) {

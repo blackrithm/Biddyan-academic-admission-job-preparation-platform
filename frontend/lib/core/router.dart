@@ -14,6 +14,7 @@ import '../screens/subject_catalog_screen.dart';
 import '../screens/app_section_screen.dart';
 import '../screens/previous_question_bank_screen.dart';
 import '../screens/question_bank_sets_screen.dart';
+import '../screens/biddyan_ai_screen.dart';
 import '../services/services.dart';
 
 /// Declarative GoRouter configuration.
@@ -80,16 +81,15 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/profile',
-      builder: (context, state) => const AppSectionScreen(
-        title: 'প্রোফাইল',
-        message: 'আপনার প্রোফাইল ও সেটিংস এখানে দেখা যাবে।',
-        icon: Icons.person,
-        selectedIndex: 4,
-      ),
+      builder: (context, state) => const MobileDashboard(initialIndex: 2),
     ),
     GoRoute(
       path: '/account',
       builder: (context, state) => const AuthScreen(),
+    ),
+    GoRoute(
+      path: '/biddyan-ai',
+      builder: (context, state) => const BiddyanAiScreen(),
     ),
   ],
 );

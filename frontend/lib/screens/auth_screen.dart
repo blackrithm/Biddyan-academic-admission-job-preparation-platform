@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../providers/providers.dart';
@@ -13,6 +14,11 @@ class AuthScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AuthState>(authNotifierProvider, (_, next) {
+      if (next.user != null && context.mounted) {
+        context.go('/');
+      }
+    });
     final authState = ref.watch(authNotifierProvider);
     final notifier = ref.read(authNotifierProvider.notifier);
 
@@ -91,6 +97,7 @@ class _AccountFormState extends State<_AccountForm> {
   final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loginMode = false;
+  bool _obscurePassword = true;
   String _role = 'student';
 
   @override
@@ -162,10 +169,17 @@ class _AccountFormState extends State<_AccountForm> {
         const SizedBox(height: 8),
         TextField(
           controller: _passwordCtrl,
-          obscureText: true,
-          decoration: const InputDecoration(
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
             labelText: 'Password',
             prefixIcon: Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              tooltip: _obscurePassword ? 'Password দেখুন' : 'Password লুকান',
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
           ),
         ),
         const SizedBox(height: 10),

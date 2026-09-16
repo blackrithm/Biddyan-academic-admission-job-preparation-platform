@@ -108,6 +108,7 @@ CREATE TABLE exams (
     title VARCHAR(255) NOT NULL,
     topic_id UUID REFERENCES topics(id) ON DELETE SET NULL,
     total_marks DECIMAL(6, 2) NOT NULL,
+    pass_mark DECIMAL(6, 2) NOT NULL DEFAULT 0,
     negative_marking_per_wrong DECIMAL(4, 2) NOT NULL DEFAULT 0.25,
     duration_minutes INT NOT NULL,
     is_live BOOLEAN NOT NULL DEFAULT FALSE,
@@ -170,6 +171,10 @@ CREATE TABLE users (
     display_name VARCHAR(255) NOT NULL DEFAULT 'Biddyan User',
     password_hash TEXT,
     role VARCHAR(30) NOT NULL DEFAULT 'user',
+    profile_image_url TEXT,
+    preparation_categories TEXT[] NOT NULL DEFAULT '{}',
+    notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    preferred_language VARCHAR(30) NOT NULL DEFAULT 'বাংলা',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

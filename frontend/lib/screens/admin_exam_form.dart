@@ -21,6 +21,7 @@ class AdminExamForm extends StatefulWidget {
 class _AdminExamFormState extends State<AdminExamForm> {
   final _title = TextEditingController();
   final _marks = TextEditingController(text: '50');
+  final _passMark = TextEditingController(text: '20');
   final _negative = TextEditingController(text: '0.25');
   final _duration = TextEditingController(text: '60');
   final _questionSearch = TextEditingController();
@@ -41,6 +42,7 @@ class _AdminExamFormState extends State<AdminExamForm> {
   void dispose() {
     _title.dispose();
     _marks.dispose();
+    _passMark.dispose();
     _negative.dispose();
     _duration.dispose();
     _questionSearch.dispose();
@@ -161,6 +163,8 @@ class _AdminExamFormState extends State<AdminExamForm> {
                     Expanded(child: _numberField(_negative, 'নেগেটিভ মার্ক')),
                   ],
                 ),
+                const SizedBox(height: 10),
+                _numberField(_passMark, 'পাস মার্ক'),
                 const SizedBox(height: 10),
                 _numberField(_duration, 'সময় (মিনিট)'),
                 SwitchListTile(
@@ -359,9 +363,15 @@ class _AdminExamFormState extends State<AdminExamForm> {
       date == null ? fallback : '${date.year}-${date.month}-${date.day}';
 
   Future<void> _save() async {
+    final totalMarks = double.tryParse(_marks.text.trim());
+    final passMark = double.tryParse(_passMark.text.trim());
     if (_title.text.trim().isEmpty || _topicId == null || _selected.isEmpty) {
       setState(
           () => _error = 'নাম, topic এবং কমপক্ষে একটি প্রশ্ন নির্বাচন করুন');
+      return;
+    }
+    if (totalMarks == null || passMark == null || passMark < 0 || passMark > totalMarks) {
+      setState(() => _error = 'পাস মার্ক ০ থেকে মোট মার্কের মধ্যে দিন');
       return;
     }
     setState(() {
@@ -373,7 +383,8 @@ class _AdminExamFormState extends State<AdminExamForm> {
       await ExamService(apiClient).create({
         'title': _title.text.trim(),
         'topicId': _topicId,
-        'totalMarks': double.parse(_marks.text.trim()),
+        'totalMarks': totalMarks,
+        'passMark': passMark,
         'negativeMarking': double.parse(_negative.text.trim()),
         'duration': int.parse(_duration.text.trim()),
         'isLive': _isLive,

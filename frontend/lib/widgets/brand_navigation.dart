@@ -24,11 +24,14 @@ class BrandBottomNavigation extends StatelessWidget {
         context.go('/routine');
       case 4:
         context.go('/profile');
+      case 5:
+        context.go('/biddyan-ai');
     }
   }
 
   @override
   Widget build(BuildContext context) => NavigationBar(
+      height: 68,
         selectedIndex: selectedIndex,
         onDestinationSelected: onSelected,
         destinations: const [
@@ -51,6 +54,10 @@ class BrandBottomNavigation extends StatelessWidget {
           NavigationDestination(
             icon: FaIcon(FontAwesomeIcons.user),
             label: 'প্রোফাইল',
+          ),
+          NavigationDestination(
+            icon: FaIcon(FontAwesomeIcons.wandMagicSparkles),
+            label: 'বিদ্বান AI',
           ),
         ],
       );

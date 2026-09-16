@@ -36,12 +36,15 @@ class ResultScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
-              const _ScoreHero(),
+              _ScoreHero(
+                passed: result != null && exam != null && result.score >= exam.passMark,
+                passMark: exam?.passMark ?? 0,
+              ),
               const SizedBox(height: 20),
               _SummaryGrid(
                 totalExaminees: result?.totalExaminees ?? 1530,
                 passCount: 642,
-                cutMark: cutMark,
+                cutMark: exam?.passMark ?? cutMark.toDouble(),
                 totalQuestions: exam?.questions.length ?? 0,
                 correctCount: result?.correctCount ?? 0,
                 wrongCount: result?.wrongCount ?? 0,
@@ -70,24 +73,27 @@ class ResultScreen extends ConsumerWidget {
 }
 
 class _ScoreHero extends StatelessWidget {
-  const _ScoreHero();
+  const _ScoreHero({required this.passed, required this.passMark});
+
+  final bool passed;
+  final double passMark;
 
   @override
   Widget build(BuildContext context) {
     return Card.filled(
-      color: const Color(0xFFEAF4EC),
+      color: passed ? const Color(0xFFEAF4EC) : const Color(0xFFFFE8E8),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Text(
-              'অভিনন্দন! আপনার পরীক্ষা সম্পন্ন হয়েছে',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            Text(
+              passed ? 'অভিনন্দন! আপনি Pass করেছেন' : 'আপনি Fail করেছেন',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'বিস্তারিত ফলাফল নিচে দেওয়া হলো',
-              style: TextStyle(color: AppConstants.mutedText, fontSize: 13),
+            Text(
+              'Pass mark: ${passMark.toStringAsFixed(2)} • বিস্তারিত ফলাফল নিচে দেওয়া হলো',
+              style: const TextStyle(color: AppConstants.mutedText, fontSize: 13),
             ),
           ],
         ),
@@ -110,7 +116,7 @@ class _SummaryGrid extends StatelessWidget {
 
   final int totalExaminees;
   final int passCount;
-  final int cutMark;
+  final double cutMark;
   final int totalQuestions;
   final int correctCount;
   final int wrongCount;
@@ -136,7 +142,7 @@ class _SummaryGrid extends StatelessWidget {
       ),
       (
         label: 'কাট-মার্ক',
-        value: '$cutMark',
+        value: cutMark.toStringAsFixed(2),
         icon: Icons.filter_alt,
         emphasized: false
       ),

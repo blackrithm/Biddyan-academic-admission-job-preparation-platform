@@ -4,6 +4,8 @@ import { TopicController } from '../controllers/topicController';
 import { QuestionController } from '../controllers/questionController';
 import { ExamController } from '../controllers/examController';
 import { requireAdmin } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
+import { ProfileController } from '../controllers/profileController';
 
 const router = Router();
 
@@ -13,6 +15,12 @@ router.post('/auth/otp-verify', AuthController.verifyOtp);
 router.post('/auth/social-login', AuthController.socialLogin);
 router.post('/auth/register', AuthController.register);
 router.post('/auth/login', AuthController.login);
+
+// --- STUDENT PROFILE ---
+router.get('/profile', requireAuth, ProfileController.getProfile);
+router.get('/profile/stats', requireAuth, ProfileController.getStats);
+router.put('/profile', requireAuth, ProfileController.updateProfile);
+router.put('/profile/password', requireAuth, ProfileController.changePassword);
 
 // --- TOPICS (CATEGORIES) ROUTES ---
 router.post('/topics', requireAdmin, TopicController.createTopic);

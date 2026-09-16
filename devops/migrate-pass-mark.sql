@@ -1,0 +1,4 @@
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS pass_mark DECIMAL(6, 2);
+UPDATE exams SET pass_mark = ROUND(total_marks * 0.40, 2) WHERE pass_mark IS NULL;
+ALTER TABLE exams ALTER COLUMN pass_mark SET DEFAULT 0;
+ALTER TABLE exams ALTER COLUMN pass_mark SET NOT NULL;

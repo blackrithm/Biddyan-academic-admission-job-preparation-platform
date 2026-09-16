@@ -19,6 +19,7 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
   final _setController = TextEditingController();
   final _examTypeController = TextEditingController();
   final _totalMarksController = TextEditingController(text: '50');
+  final _passMarksController = TextEditingController(text: '20');
   final _negativeMarksController = TextEditingController(text: '0.25');
   final _durationController = TextEditingController(text: '60');
   final _jsonController = TextEditingController();
@@ -33,6 +34,7 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
     _setController.dispose();
     _examTypeController.dispose();
     _totalMarksController.dispose();
+    _passMarksController.dispose();
     _negativeMarksController.dispose();
     _durationController.dispose();
     _jsonController.dispose();
@@ -97,6 +99,12 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
                       ],
                     ),
                     const SizedBox(height: 10),
+                    TextField(
+                      controller: _passMarksController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'পাস মার্ক'),
+                    ),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
@@ -153,10 +161,16 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
       setState(() => _error = 'Question set-এর নাম দিন');
       return;
     }
-    if (double.tryParse(_totalMarksController.text.trim()) == null ||
+    final totalMarks = double.tryParse(_totalMarksController.text.trim());
+    final passMark = double.tryParse(_passMarksController.text.trim());
+    if (totalMarks == null || passMark == null ||
         double.tryParse(_negativeMarksController.text.trim()) == null ||
         int.tryParse(_durationController.text.trim()) == null) {
-      setState(() => _error = 'মোট মার্ক, নেগেটিভ মার্ক এবং সময় সঠিকভাবে দিন');
+      setState(() => _error = 'মোট মার্ক, পাস মার্ক, নেগেটিভ মার্ক এবং সময় সঠিকভাবে দিন');
+      return;
+    }
+    if (passMark < 0 || passMark > totalMarks) {
+      setState(() => _error = 'পাস মার্ক ০ থেকে মোট মার্কের মধ্যে দিন');
       return;
     }
     setState(() {
@@ -169,7 +183,7 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
       final rawQuestions = decoded is Map ? decoded['questions'] : decoded;
       if (rawQuestions is! List || rawQuestions.isEmpty) throw const FormatException('questions array দিন');
       final questions = rawQuestions.map((item) => Map<String, dynamic>.from(item as Map)).toList();
-      final count = await QuestionService(apiClient).bulkCreate(
+      final insertedQuestions = await QuestionService(apiClient).bulkCreateWithQuestions(
         topicId: _topicId!,
         questions: questions,
         defaults: {
@@ -179,10 +193,19 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
           'source': 'question-bank',
         },
       );
+      await ExamService(apiClient).createFromQuestionSet(
+        title: _setController.text.trim(),
+        topicId: _topicId,
+        questionIds: insertedQuestions.map((question) => question.id).toList(),
+        totalMarks: totalMarks,
+        passMark: passMark,
+        negativeMarking: double.parse(_negativeMarksController.text.trim()),
+        duration: int.parse(_durationController.text.trim()),
+      );
       if (mounted) {
         setState(() {
           _jsonController.clear();
-          _success = '$countটি প্রশ্নসহ ${_setController.text.trim()} upload হয়েছে';
+          _success = '${insertedQuestions.length}টি প্রশ্নসহ ${_setController.text.trim()} upload হয়েছে';
         });
       }
     } catch (error) {

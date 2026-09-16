@@ -73,6 +73,48 @@ class AuthService {
   }
 }
 
+class ProfileService {
+  const ProfileService(this.client);
+
+  final ApiClient client;
+
+  Future<ProfileStats> getStats() async {
+    final json = await client.get('profile/stats');
+    return ProfileStats.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<UserProfile> get() async {
+    final json = await client.get('profile');
+    return UserProfile.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<UserProfile> update({
+    String? displayName,
+    String? profileImageUrl,
+    List<String>? preparationCategories,
+    bool? notificationsEnabled,
+    String? preferredLanguage,
+  }) async {
+    final json = await client.put('profile', body: {
+      if (displayName != null) 'displayName': displayName,
+      if (profileImageUrl != null) 'profileImageUrl': profileImageUrl,
+      if (preparationCategories != null)
+        'preparationCategories': preparationCategories,
+      if (notificationsEnabled != null)
+        'notificationsEnabled': notificationsEnabled,
+      if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
+    });
+    return UserProfile.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await client.put('profile/password', body: {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    });
+  }
+}
+
 class TopicService {
   const TopicService(this.client);
 
@@ -157,12 +199,27 @@ class QuestionService {
     required List<Map<String, dynamic>> questions,
     Map<String, dynamic> defaults = const {},
   }) async {
+    final inserted = await bulkCreateWithQuestions(
+      topicId: topicId,
+      questions: questions,
+      defaults: defaults,
+    );
+    return inserted.length;
+  }
+
+  Future<List<Question>> bulkCreateWithQuestions({
+    required String topicId,
+    required List<Map<String, dynamic>> questions,
+    Map<String, dynamic> defaults = const {},
+  }) async {
     final json = await client.post('questions/bulk', body: {
       'topic_id': topicId,
       'questions': questions,
       'defaults': defaults,
     }) as Map<String, dynamic>;
-    return (json['count'] as num).toInt();
+    return (json['questions'] as List<dynamic>? ?? const [])
+        .map((item) => Question.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Question> update(String id, Map<String, dynamic> body) async {
@@ -190,6 +247,7 @@ class ExamService {
     required List<String> questionIds,
     String? topicId,
     double totalMarks = 0,
+    double passMark = 0,
     double negativeMarking = 0.25,
     int duration = 60,
   }) async {
@@ -197,6 +255,9 @@ class ExamService {
       'title': title,
       'topicId': topicId,
       'totalMarks': totalMarks > 0 ? totalMarks : questionIds.length,
+        'passMark': passMark > 0
+          ? passMark
+          : (totalMarks > 0 ? totalMarks : questionIds.length) * 0.4,
       'negativeMarking': negativeMarking,
       'duration': duration,
       'isLive': false,
@@ -253,6 +314,7 @@ class ExamService {
     required String examId,
     required String userId,
     required List<AnswerSubmission> answers,
+    double negativeMarking = 0.25,
   }) async {
     try {
       final json = await client.post('exams/$examId/submit', body: {
@@ -283,7 +345,7 @@ class ExamService {
           ),
         );
       }
-      final score = (correct * 1.0) - (wrong * 0.25);
+      final score = (correct * 1.0) - (wrong * negativeMarking);
       return AttemptResult(
         attemptId: 'mock-${DateTime.now().millisecondsSinceEpoch}',
         score: score,

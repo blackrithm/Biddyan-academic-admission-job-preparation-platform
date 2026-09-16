@@ -64,11 +64,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         phoneNumber: phoneNumber,
         password: password,
         role: role,
-        guestId: apiClient.authToken,
+        guestId: _guestIdFromToken(apiClient.authToken),
       );
       apiClient.authToken = user.token;
       state = AuthState(user: user);
     } catch (error) {
+      apiClient.authToken = null;
       state = AuthState(errorMessage: error.toString());
     }
   }
@@ -88,6 +89,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       apiClient.authToken = user.token;
       state = AuthState(user: user);
     } catch (error) {
+      apiClient.authToken = null;
       state = AuthState(errorMessage: error.toString());
     }
   }
@@ -127,6 +129,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void logout() {
     apiClient.authToken = null;
     state = const AuthState();
+  }
+
+  String? _guestIdFromToken(String? token) {
+    if (token == null || token.contains('.')) return null;
+    return token;
   }
 }
 
@@ -224,6 +231,7 @@ class ExamSessionNotifier extends StateNotifier<ExamSessionState> {
         examId: exam.id,
         userId: apiClient.authToken ?? 'mock-user',
         answers: answers,
+        negativeMarking: exam.negativeMarking,
       );
       state = state.copyWith(isSubmitting: false, lastResult: result);
       return result;

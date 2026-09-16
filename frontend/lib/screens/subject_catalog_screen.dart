@@ -201,8 +201,8 @@ class _CategoryTabs extends StatelessWidget {
   final String? activeCategory;
 
   static const _fallbackCategories = [
-    'HSC',
     'SSC',
+    'HSC',
     'Varsity',
     'Medical',
     'Engineering',
@@ -279,7 +279,16 @@ class _QuestionBankSets extends StatelessWidget {
     final questionSets = <String>{};
     for (final question in questions) {
       if (question.examType?.isNotEmpty == true) examTypes.add(question.examType!);
-      previousYears.addAll(question.previousYears);
+      previousYears.addAll(
+        question.previousYears.where(
+          (year) => categoryName == null ||
+              year.toLowerCase().contains(categoryName!.toLowerCase()) ||
+              (categoryName!.toLowerCase() == 'bcs' &&
+                  year.toLowerCase().contains('bcs')) ||
+              (categoryName!.toLowerCase() == 'bank' &&
+                  year.toLowerCase().contains('bank')),
+        ),
+      );
       if (question.questionSet?.isNotEmpty == true) {
         questionSets.add(question.questionSet!);
       }
@@ -303,7 +312,9 @@ class _QuestionBankSets extends StatelessWidget {
         _QuestionBankEntry(
           label: year,
           caption: 'Previous Year',
-          questions: questions.where((question) => question.previousYears.contains(year)).toList(),
+            questions: questions
+              .where((question) => question.previousYears.contains(year))
+              .toList(),
         ),
     ];
       final visibleEntries = entries.take(3).toList();

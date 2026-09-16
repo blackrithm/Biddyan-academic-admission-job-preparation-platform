@@ -61,7 +61,8 @@ class _ExamRoomScreenState extends ConsumerState<ExamRoomScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _NegativeMarkingBanner(),
+          if (session.exam != null && session.exam!.negativeMarking > 0)
+            _NegativeMarkingBanner(value: session.exam!.negativeMarking),
           if (session.exam == null)
             const Expanded(
               child: Center(child: CircularProgressIndicator()),
@@ -113,7 +114,9 @@ class _CountdownClock extends StatelessWidget {
 }
 
 class _NegativeMarkingBanner extends StatelessWidget {
-  const _NegativeMarkingBanner();
+  const _NegativeMarkingBanner({required this.value});
+
+  final double value;
 
   @override
   Widget build(BuildContext context) {
@@ -121,13 +124,13 @@ class _NegativeMarkingBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       decoration: const BoxDecoration(color: Color(0xFFFFEBEE)),
       child: Row(
-        children: const [
-          Icon(Icons.priority_high, color: Color(0xFFD32F2F), size: 20),
-          SizedBox(width: 8),
+        children: [
+          const Icon(Icons.priority_high, color: Color(0xFFD32F2F), size: 20),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'সতর্কতা: প্রতিটি ভুল উত্তরের জন্য ০.২৫ নম্বর কাটা যাবে',
-              style: TextStyle(
+              'সতর্কতা: প্রতিটি ভুল উত্তরের জন্য ${_formatNegativeMark(value)} নম্বর কাটা যাবে',
+              style: const TextStyle(
                 color: Color(0xFFD32F2F),
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
@@ -139,6 +142,11 @@ class _NegativeMarkingBanner extends StatelessWidget {
     );
   }
 }
+
+String _formatNegativeMark(double value) =>
+    value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
 
 class _ExamBody extends ConsumerStatefulWidget {
   const _ExamBody({required this.session, required this.notifier});

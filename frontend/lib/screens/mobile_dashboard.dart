@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,15 +13,35 @@ import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
 
 class MobileDashboard extends ConsumerStatefulWidget {
-  const MobileDashboard({super.key});
+  const MobileDashboard({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   ConsumerState<MobileDashboard> createState() => _MobileDashboardState();
 }
 
 class _MobileDashboardState extends ConsumerState<MobileDashboard> {
-  int _selectedIndex = 0;
+  late int _selectedIndex = widget.initialIndex;
   bool _drawerOpen = false;
+  UserProfile? _sidebarProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSidebarProfile();
+  }
+
+  Future<void> _loadSidebarProfile() async {
+    if (apiClient.authToken == null || apiClient.authToken!.contains('.')) {
+      try {
+        final profile = await ProfileService(apiClient).get();
+        if (mounted) setState(() => _sidebarProfile = profile);
+      } catch (_) {
+        // Guests use the fixed guest identity in the drawer.
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +54,10 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
+        title: Center(
+          child: Image.asset('assets/biddyan_logo.png', height: 44),
+        ),
         leading: Builder(
           builder: (context) => IconButton(
             icon: Icon(_drawerOpen ? Icons.close : Icons.menu),
@@ -44,8 +71,8 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
             },
           ),
         ),
-        title: Image.asset('assets/biddyan_logo.png', height: 44),
         actions: [
+          const SizedBox(width: 48),
           IconButton(
             tooltip: 'নোটিশ',
             icon: const Badge(
@@ -59,6 +86,9 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
         ],
       ),
       drawer: _DashboardDrawer(
+        profile: _sidebarProfile,
+        isGuest: ref.watch(authNotifierProvider).user == null,
+        isAdmin: ref.watch(authNotifierProvider).user?.role == 'admin',
         onAccount: () => context.push('/account'),
         onLogout: () => ref.read(authNotifierProvider.notifier).logout(),
         onNavigate: (index) {
@@ -123,27 +153,179 @@ class _DashboardHome extends StatelessWidget {
             ('ব্যাংক জব', FontAwesomeIcons.buildingColumns),
             ('সরকারি চাকরি', FontAwesomeIcons.landmark),
             ('নন-ক্যাডার', FontAwesomeIcons.userTie),
-            ('ভর্তি পরীক্ষা', FontAwesomeIcons.graduationCap),
+            
           ],
           onTap: (title) {
-            if (title != 'প্রিলি ও লিখিত প্রস্তুতি' &&
-                title != 'ফ্রি সাপ্তাহিক মডেল টেস্ট') {
-              final category = switch (title) {
-                'BCS প্রস্তুতি' => 'BCS',
-                'ব্যাংক জব' => 'Bank',
-                _ => title,
-              };
-              context.push(
-                '/subject-catalog?category=${Uri.encodeComponent(category)}',
-              );
-            } else if (title == 'প্রিলি ও লিখিত প্রস্তুতি') {
-              context.push('/previous-question-bank');
-            }
+            final category = switch (title) {
+              'BCS প্রস্তুতি' => 'BCS',
+              'ব্যাংক জব' => 'Bank',
+              _ => title,
+            };
+            context.push('/subject-catalog?category=${Uri.encodeComponent(category)}');
           },
         ),
       ],
     );
   }
+}
+
+class _StudyProgressCard extends StatelessWidget {
+  const _StudyProgressCard();
+
+  @override
+  Widget build(BuildContext context) => Card(
+        color: AppConstants.primary,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('এই সপ্তাহের progress',
+                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                  ),
+                  Text('৬৮%', style: TextStyle(color: Colors.white.withValues(alpha: .9), fontSize: 21, fontWeight: FontWeight.w800)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: const LinearProgressIndicator(
+                  value: .68,
+                  minHeight: 9,
+                  backgroundColor: Color(0x557AA7A4),
+                  color: Color(0xFFFFC857),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text('৪টি session সম্পন্ন • আরও ২টি করলে weekly goal পূর্ণ হবে',
+                  style: TextStyle(color: Colors.white.withValues(alpha: .82))),
+            ],
+          ),
+        ),
+      );
+}
+
+class _DashboardSectionHeading extends StatelessWidget {
+  const _DashboardSectionHeading({required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(color: AppConstants.mutedText)),
+        ],
+      );
+}
+
+class _ActivitySummaryGrid extends StatelessWidget {
+  const _ActivitySummaryGrid({required this.stats});
+
+  final ProfileStats? stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = stats;
+    final metrics = [
+      (Icons.menu_book, '${data?.totalQuestionsRead ?? 0}', 'Total Questions Read', const Color(0xFFE8F3F1)),
+      (Icons.assignment_outlined, '${data?.totalExams ?? 0}', 'Total Exams', const Color(0xFFFFF2D8)),
+      (Icons.auto_graph, '${data?.totalPracticeExams ?? 0}', 'Practice Exams', const Color(0xFFEFE8FF)),
+      (Icons.live_tv, '${data?.totalLiveExams ?? 0}', 'Live Exams', const Color(0xFFFFE8E8)),
+      (Icons.verified_outlined, '${data?.totalPassedExams ?? 0}', 'Passed Exams', const Color(0xFFE3F4E7)),
+      (Icons.warning_amber_outlined, '${data?.failedOrIncompleteExams ?? 0}', 'Failed / Incomplete', const Color(0xFFFFF0E0)),
+      (Icons.check_circle_outline, '${data?.totalRightAnswers ?? 0}', 'Right Answers', const Color(0xFFE4F5EF)),
+      (Icons.cancel_outlined, '${data?.totalWrongAnswers ?? 0}', 'Wrong Answers', const Color(0xFFFFE8EA)),
+      (Icons.remove_circle_outline, '${data?.totalSkippedAnswers ?? 0}', 'Skip / Unanswer', const Color(0xFFF0F1F4)),
+      (Icons.timer_outlined, _formatStudyTime(data?.totalStudyMinutes ?? 0), 'Study Time', const Color(0xFFE8F0FF)),
+      (Icons.volunteer_activism_outlined, '${data?.totalContribution ?? 0}', 'Contribution', const Color(0xFFFFEAF4)),
+      (Icons.emoji_events_outlined, data?.overallRank == null ? '—' : '#${data!.overallRank}', 'Overall Rank', const Color(0xFFE6F4F5)),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 520 ? 3 : 4;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: metrics.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: columns == 3 ? 1.05 : 1.2,
+          ),
+          itemBuilder: (context, index) {
+            final metric = metrics[index];
+            return _ActivityMetric(
+              icon: metric.$1,
+              value: metric.$2,
+              label: metric.$3,
+              color: metric.$4,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatStudyTime(int minutes) {
+    if (minutes < 60) return '${minutes}m';
+    return '${minutes ~/ 60}h ${minutes % 60}m';
+  }
+}
+
+class _ActivityMetric extends StatelessWidget {
+  const _ActivityMetric({required this.icon, required this.value, required this.label, required this.color});
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: AppConstants.primary, size: 22),
+            const SizedBox(height: 9),
+            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+          ],
+        ),
+      );
+}
+
+class _RecentActivityList extends StatelessWidget {
+  const _RecentActivityList();
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Column(
+          children: [
+            const ListTile(
+              leading: CircleAvatar(backgroundColor: Color(0xFFE8F3F1), child: Icon(Icons.check, color: AppConstants.primary)),
+              title: Text('SSC English Practice', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('৮/১০ সঠিক • ১২ মিনিট আগে'),
+              trailing: Text('৮০%', style: TextStyle(fontWeight: FontWeight.w800, color: AppConstants.primary)),
+            ),
+            const Divider(height: 1, indent: 68),
+            ListTile(
+              leading: const CircleAvatar(backgroundColor: Color(0xFFFFF2D8), child: Icon(Icons.history, color: Color(0xFFB77900))),
+              title: const Text('BCS Question Bank', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('শেষ দেখা: General Knowledge'),
+              trailing: const Icon(Icons.play_arrow, color: AppConstants.primary),
+              onTap: () => context.push('/question-bank?category=BCS'),
+            ),
+          ],
+        ),
+      );
 }
 
 class _QuestionBankSection extends StatefulWidget {
@@ -294,6 +476,7 @@ class _QuestionBankData {
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title, required this.color});
+
   final String title;
   final Color color;
 
@@ -312,12 +495,15 @@ class _SectionTitle extends StatelessWidget {
             ),
           ],
         ),
-        child: Text(title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800)),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       );
 }
 
@@ -510,54 +696,444 @@ class _NoticeCard extends StatelessWidget {
   }
 }
 
-class _ProfilePage extends StatelessWidget {
+class _ProfilePage extends ConsumerStatefulWidget {
   const _ProfilePage();
+
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(children: [
-                const CircleAvatar(
-                    radius: 42, child: Icon(Icons.person, size: 48)),
-                const SizedBox(height: 8),
-                const Text('শিক্ষার্থী',
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                const Text('ID: BIDDYAN-USER'),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.edit),
-                    label: const Text('প্রোফাইল সম্পাদনা')),
-              ]),
+  ConsumerState<_ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<_ProfilePage> {
+  UserProfile? _profile;
+  ProfileStats? _stats;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await ProfileService(apiClient).get();
+      ProfileStats? stats;
+      try {
+        stats = await ProfileService(apiClient).getStats();
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _stats = stats;
+        });
+      }
+    } catch (_) {
+      final user = ref.read(authNotifierProvider).user;
+      if (mounted) {
+        setState(() {
+          _profile = UserProfile(
+            id: user?.userId ?? 'guest-profile',
+            phoneNumber: user?.phoneNumber ?? '',
+            displayName: user?.displayName ?? 'শিক্ষার্থী',
+          );
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    final profile = _profile;
+    if (profile == null) {
+      return const Center(child: Text('Profile লোড করা যায়নি'));
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      children: [
+        _ProfileIdentityCard(
+          name: profile.displayName,
+          imageUrl: profile.profileImageUrl,
+          onSettings: () => _showSettings(context),
+          onPhoto: _pickPhoto,
+          onEditName: () => _editName(context),
+          selectedCategories: profile.preparationCategories,
+          onCategorySelected: _toggleCategory,
+        ),
+        const SizedBox(height: 14),
+        const _StudyProgressCard(),
+        const SizedBox(height: 18),
+        const _DashboardSectionHeading(
+          title: 'আজকের পড়াশোনা',
+          subtitle: 'আপনার প্রস্তুতির এক নজরের overview',
+        ),
+        const SizedBox(height: 10),
+        _ActivitySummaryGrid(stats: _stats),
+        const SizedBox(height: 18),
+        const _DashboardSectionHeading(
+          title: 'সাম্প্রতিক activity',
+          subtitle: 'আপনার শেখার momentum ধরে রাখুন',
+        ),
+        const SizedBox(height: 10),
+        const _RecentActivityList(),
+        const SizedBox(height: 18),
+        Card(
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFE8F3F1),
+              child: Icon(Icons.settings_outlined, color: AppConstants.primary),
             ),
+            title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: const Text('Notification, language ও account preferences'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showSettings(context),
           ),
-          const SizedBox(height: 16),
-          const _ProfileStat(title: 'মোট পরীক্ষা', value: '0'),
-          const _ProfileStat(title: 'সঠিক উত্তর', value: '0'),
-          const _ProfileStat(title: 'পয়েন্ট', value: '0'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _toggleCategory(String category) async {
+    final current = [...?_profile?.preparationCategories];
+    if (current.contains(category)) {
+      current.remove(category);
+    } else {
+      current.add(category);
+    }
+    try {
+      final updated = await ProfileService(apiClient).update(
+        preparationCategories: current,
+      );
+      if (mounted) setState(() => _profile = updated);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Category save failed: $error')));
+    }
+  }
+
+  Future<void> _pickPhoto() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75);
+    if (image == null) return;
+    try {
+      final bytes = await image.readAsBytes();
+      final extension = image.name.split('.').last.toLowerCase();
+      final mimeType = switch (extension) {
+        'jpg' || 'jpeg' => 'jpeg',
+        'png' => 'png',
+        'webp' => 'webp',
+        'gif' => 'gif',
+        'bmp' => 'bmp',
+        'avif' => 'avif',
+        _ => 'jpeg',
+      };
+      final profile = await ProfileService(apiClient).update(
+        profileImageUrl: 'data:image/$mimeType;base64,${base64Encode(bytes)}',
+      );
+      if (mounted) setState(() => _profile = profile);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Profile picture save failed: $error')));
+    }
+  }
+
+  Future<void> _editName(BuildContext context) async {
+    final controller = TextEditingController(text: _profile?.displayName);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('নাম পরিবর্তন করুন'),
+        content: TextField(controller: controller, autofocus: true),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('বাতিল')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('সংরক্ষণ')),
         ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+    try {
+      final updated = await ProfileService(apiClient).update(displayName: name);
+      if (!mounted) return;
+      setState(() => _profile = updated);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Name save failed: $error')));
+    }
+  }
+
+  Future<void> _changePassword(BuildContext context) async {
+    final current = TextEditingController();
+    final next = TextEditingController();
+    final values = await showDialog<(String, String)>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Password পরিবর্তন করুন'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: current, obscureText: true, decoration: const InputDecoration(labelText: 'বর্তমান password')),
+            const SizedBox(height: 10),
+            TextField(controller: next, obscureText: true, decoration: const InputDecoration(labelText: 'নতুন password')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('বাতিল')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, (current.text, next.text)), child: const Text('আপডেট')),
+        ],
+      ),
+    );
+    current.dispose();
+    next.dispose();
+    if (values == null) return;
+    try {
+      await ProfileService(apiClient).changePassword(values.$1, values.$2);
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Password update failed: $error')));
+    }
+  }
+
+  void _showSettings(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              leading: Icon(Icons.settings_outlined, color: AppConstants.primary),
+              title: Text('Profile settings', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('নাম পরিবর্তন করুন'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                _editName(this.context);
+              },
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.notifications_none),
+              title: const Text('Study notifications'),
+              value: _profile?.notificationsEnabled ?? true,
+              onChanged: (value) async {
+                final updated = await ProfileService(apiClient).update(notificationsEnabled: value);
+                if (mounted) setState(() => _profile = updated);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('ভাষা'),
+              trailing: Text(_profile?.preferredLanguage ?? 'বাংলা'),
+              onTap: () async {
+                final updated = await ProfileService(apiClient).update(preferredLanguage: 'বাংলা');
+                if (mounted) setState(() => _profile = updated);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('Account security'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                _changePassword(this.context);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileIdentityCard extends StatelessWidget {
+  const _ProfileIdentityCard({
+    required this.name,
+    required this.onSettings,
+    required this.onPhoto,
+    required this.onEditName,
+    required this.selectedCategories,
+    required this.onCategorySelected,
+    this.imageUrl,
+  });
+
+  final String name;
+  final VoidCallback onSettings;
+  final VoidCallback onPhoto;
+  final VoidCallback onEditName;
+  final List<String> selectedCategories;
+  final ValueChanged<String> onCategorySelected;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 34,
+                    backgroundColor: Color(0xFFDCECEA),
+                    backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
+                    child: imageUrl == null
+                        ? const Icon(Icons.person, size: 38, color: AppConstants.primary)
+                        : null,
+                  ),
+                  Positioned(
+                    right: -3,
+                    bottom: -3,
+                    child: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: AppConstants.primary,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        iconSize: 14,
+                        color: Colors.white,
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        onPressed: onPhoto,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    const Text('Student profile', style: TextStyle(color: AppConstants.mutedText)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F3F1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('Active learner', style: TextStyle(color: AppConstants.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ),
+              _PreparationTypeDropdown(
+                selected: selectedCategories,
+                onSelected: onCategorySelected,
+              ),
+              IconButton(
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: onSettings,
+              ),
+              IconButton(
+                tooltip: 'নাম পরিবর্তন করুন',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: onEditName,
+              ),
+            ],
+          ),
+        ),
       );
 }
 
-class _ProfileStat extends StatelessWidget {
-  const _ProfileStat({required this.title, required this.value});
-  final String title;
-  final String value;
+class _PreparationTypeDropdown extends StatelessWidget {
+  const _PreparationTypeDropdown({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> selected;
+  final ValueChanged<String> onSelected;
+
+  static const _categories = [
+    ('Academic', Icons.school_outlined),
+    ('Admission', Icons.account_balance_outlined),
+    ('BCS & Jobs', Icons.work_outline),
+    ('Bank Job', Icons.account_balance_wallet_outlined),
+    ('Medical', Icons.local_hospital_outlined),
+    ('Engineering', Icons.settings_outlined),
+  ];
+
   @override
-  Widget build(BuildContext context) => Card(
-        child: ListTile(
-          leading:
-              const Icon(Icons.analytics_outlined, color: AppConstants.primary),
-          title: Text(title),
-          trailing: Text(value,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+  Widget build(BuildContext context) {
+    final selectedLabel = selected.isEmpty
+        ? 'Select type'
+        : selected.length == 1
+            ? selected.first
+            : '${selected.length} selected';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Preparation Type',
+          style: TextStyle(
+            color: AppConstants.mutedText,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      );
+        const SizedBox(height: 3),
+        PopupMenuButton<String>(
+          tooltip: 'Preparation Type নির্বাচন করুন',
+          onSelected: onSelected,
+          itemBuilder: (context) => [
+            for (final category in _categories)
+              PopupMenuItem<String>(
+                value: category.$1,
+                child: Row(
+                  children: [
+                    Icon(
+                      selected.contains(category.$1)
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      color: AppConstants.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(category.$1),
+                  ],
+                ),
+              ),
+          ],
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 112),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF5F8),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD5E5EA)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    selectedLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppConstants.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, size: 17, color: AppConstants.primary),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _PackagesPage extends StatelessWidget {
@@ -591,25 +1167,57 @@ class _PackagesPage extends StatelessWidget {
 
 class _DashboardDrawer extends StatelessWidget {
   const _DashboardDrawer({
+    required this.profile,
+    required this.isGuest,
+    required this.isAdmin,
     required this.onNavigate,
     required this.onAccount,
     required this.onLogout,
   });
+  final UserProfile? profile;
+  final bool isGuest;
+  final bool isAdmin;
   final ValueChanged<int> onNavigate;
   final VoidCallback onAccount;
   final VoidCallback onLogout;
 
   @override
-  Widget build(BuildContext context) => Drawer(
+  Widget build(BuildContext context) {
+    final name = isGuest ? 'Guest-Biddyan-User' : (profile?.displayName ?? 'শিক্ষার্থী');
+    final phone = profile?.phoneNumber ?? '';
+    final imageUrl = profile?.profileImageUrl;
+    return Drawer(
+      backgroundColor: const Color(0xFFEAF5F8),
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              accountName: const Text('শিক্ষার্থী'),
-              accountEmail: const Text('BIDDYAN-USER'),
-              currentAccountPicture: Image.asset('assets/biddyan_logo.png'),
-              decoration: const BoxDecoration(color: AppConstants.primary),
+              accountName: Text(
+                name,
+                style: const TextStyle(
+                  color: AppConstants.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              accountEmail: isGuest
+                  ? const SizedBox.shrink()
+                  : Text(
+                      phone,
+                      style: const TextStyle(color: AppConstants.mutedText),
+                    ),
+              currentAccountPicture: imageUrl == null
+                  ? Image.asset('assets/biddyan_logo.png')
+                  : CircleAvatar(backgroundImage: NetworkImage(imageUrl)),
+              decoration: const BoxDecoration(color: Color(0xFFEAF5F8)),
             ),
+            ListTile(
+                leading: const Icon(Icons.auto_awesome, color: AppConstants.primary),
+                title: const Text('বিদ্বান AI'),
+                subtitle: const Text('প্রশ্ন করুন, সন্দেহ দূর করুন'),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.push('/biddyan-ai');
+                }),
             ListTile(
                 leading: const Icon(Icons.analytics),
                 title: const Text('Performance'),
@@ -642,15 +1250,17 @@ class _DashboardDrawer extends StatelessWidget {
                 leading: const Icon(Icons.info_outline),
                 title: const Text('About Us'),
                 onTap: () {}),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.admin_panel_settings),
-              title: const Text('Admin Panel'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/admin');
-              },
-            ),
+            if (isAdmin) ...[
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings),
+                title: const Text('Admin Panel'),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.go('/admin');
+                },
+              ),
+            ],
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
@@ -659,4 +1269,5 @@ class _DashboardDrawer extends StatelessWidget {
           ],
         ),
       );
+  }
 }

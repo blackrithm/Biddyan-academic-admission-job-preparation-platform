@@ -168,9 +168,11 @@ class _AppDrawer extends StatelessWidget {
       selectedIndex: 0,
       onDestinationSelected: (index) {
         Navigator.of(context).pop();
-        if (index == 4) {
+        if (index == 1) {
+          context.go('/biddyan-ai');
+        } else if (index == 5) {
           context.go('/admin');
-        } else if (index > 0) {
+        } else if (index > 1) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('এই সেকশনটি খুব শীঘ্রই যুক্ত হবে।')),
           );
@@ -180,6 +182,10 @@ class _AppDrawer extends StatelessWidget {
         NavigationDrawerDestination(
           icon: Icon(Icons.home),
           label: Text('হোম'),
+        ),
+        NavigationDrawerDestination(
+          icon: Icon(Icons.auto_awesome),
+          label: Text('বিদ্বান AI'),
         ),
         NavigationDrawerDestination(
           icon: Icon(Icons.school),
