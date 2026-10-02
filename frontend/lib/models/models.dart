@@ -124,17 +124,91 @@ class ProfileStats {
       );
 }
 
+class RoutinePlan {
+  const RoutinePlan({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.subject,
+    required this.minutes,
+    required this.date,
+    required this.note,
+    this.done = false,
+  });
+
+  final String id;
+  final String title;
+  final String category;
+  final String subject;
+  final int minutes;
+  final DateTime date;
+  final String note;
+  final bool done;
+
+  factory RoutinePlan.fromJson(Map<String, dynamic> json) => RoutinePlan(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        category: json['category'] as String,
+        subject: json['subject'] as String,
+        minutes: (json['duration_minutes'] as num?)?.toInt() ?? 30,
+        date: DateTime.parse(json['scheduled_date'] as String),
+        note: json['note'] as String? ?? '',
+        done: json['completed'] as bool? ?? false,
+      );
+}
+
+class RecentActivity {
+  const RecentActivity({
+    required this.type,
+    required this.activityId,
+    required this.relatedId,
+    required this.title,
+    required this.activityAt,
+    this.correctCount,
+    this.wrongCount,
+    this.totalMarks,
+    this.isLive,
+    this.questionCount,
+  });
+
+  final String type;
+  final String activityId;
+  final String relatedId;
+  final String title;
+  final DateTime activityAt;
+  final int? correctCount;
+  final int? wrongCount;
+  final double? totalMarks;
+  final bool? isLive;
+  final int? questionCount;
+
+  factory RecentActivity.fromJson(Map<String, dynamic> json) => RecentActivity(
+        type: json['activity_type'] as String,
+        activityId: json['activity_id'] as String,
+        relatedId: json['related_id'] as String,
+        title: json['title'] as String,
+        activityAt: DateTime.parse(json['activity_at'] as String).toLocal(),
+        correctCount: (json['correct_count'] as num?)?.toInt(),
+        wrongCount: (json['wrong_count'] as num?)?.toInt(),
+        totalMarks: (json['total_marks'] as num?)?.toDouble(),
+        isLive: json['is_live'] as bool?,
+        questionCount: (json['question_count'] as num?)?.toInt(),
+      );
+}
+
 class TopicNode {
   const TopicNode({
     required this.id,
     required this.name,
     this.parentId,
+    this.questionType = 'mcq',
     this.children = const [],
   });
 
   final String id;
   final String name;
   final String? parentId;
+  final String questionType;
   final List<TopicNode> children;
 
   factory TopicNode.fromJson(Map<String, dynamic> json) {
@@ -142,6 +216,7 @@ class TopicNode {
       id: json['id'] as String,
       name: json['name'] as String,
       parentId: json['parent_id'] as String?,
+      questionType: json['question_type'] as String? ?? 'mcq',
       children: (json['children'] as List<dynamic>? ?? const [])
           .map((e) => TopicNode.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -207,6 +282,54 @@ class Question {
       source: (json['source'] as String?) ?? 'admin',
     );
   }
+}
+
+class WrittenQuestion {
+  const WrittenQuestion({
+    required this.id,
+    required this.topicId,
+    required this.questionText,
+    required this.modelAnswer,
+    required this.marks,
+    this.format = 'written',
+    this.stimulus = '',
+    this.setId,
+    this.setTitle = '',
+    this.itemOrder = 1,
+    this.topicName,
+    this.examType,
+    this.questionSet,
+  });
+
+  final String id;
+  final String topicId;
+  final String questionText;
+  final String modelAnswer;
+  final double marks;
+  final String format;
+  final String stimulus;
+  final String? setId;
+  final String setTitle;
+  final int itemOrder;
+  final String? topicName;
+  final String? examType;
+  final String? questionSet;
+
+  factory WrittenQuestion.fromJson(Map<String, dynamic> json) => WrittenQuestion(
+        id: json['id'] as String,
+        topicId: json['topic_id'] as String,
+        questionText: json['question_text'] as String,
+        modelAnswer: json['model_answer'] as String? ?? '',
+        marks: double.tryParse((json['marks'] ?? 10).toString()) ?? 10,
+        format: json['format'] as String? ?? 'written',
+        stimulus: json['stimulus'] as String? ?? '',
+        setId: json['set_id'] as String?,
+        setTitle: json['set_title'] as String? ?? '',
+        itemOrder: (json['item_order'] as num?)?.toInt() ?? 1,
+        topicName: json['topic_name'] as String?,
+        examType: json['exam_type'] as String?,
+        questionSet: json['question_set'] as String?,
+      );
 }
 
 class Exam {

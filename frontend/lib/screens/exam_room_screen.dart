@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../core/constants.dart';
 import '../providers/providers.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 import 'exam_room_widgets.dart';
 
 /// Live Exam Room.
@@ -32,18 +33,15 @@ class _ExamRoomScreenState extends ConsumerState<ExamRoomScreen> {
     final compactAppBar = MediaQuery.sizeOf(context).width < 600;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          session.exam?.title ?? 'লাইভ পরীক্ষা',
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
+      drawer: const DashboardDrawer(),
+      appBar: BrandHeader(
+        showNotifications: false,
+        extraActions: [
           if (session.exam != null) ...[
             if (compactAppBar)
-              IconButton(
-                tooltip: 'সময় ${_formatHms(session.secondsLeft)}',
-                icon: _CountdownClock(seconds: session.secondsLeft),
-                onPressed: null,
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _MobileCountdown(seconds: session.secondsLeft),
               )
             else
               Chip(
@@ -52,7 +50,7 @@ class _ExamRoomScreenState extends ConsumerState<ExamRoomScreen> {
               ),
             IconButton(
               tooltip: 'সাবমিট',
-              icon: const Icon(Icons.send),
+              icon: const Icon(Icons.task_alt),
               onPressed: () => _submit(notifier),
             ),
           ],
@@ -61,15 +59,17 @@ class _ExamRoomScreenState extends ConsumerState<ExamRoomScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (session.exam != null && session.exam!.negativeMarking > 0)
-            _NegativeMarkingBanner(value: session.exam!.negativeMarking),
           if (session.exam == null)
             const Expanded(
               child: Center(child: CircularProgressIndicator()),
             )
           else
             Expanded(
-              child: _ExamBody(session: session, notifier: notifier),
+              child: _ExamBody(
+                session: session,
+                notifier: notifier,
+                onSubmit: () => _submit(notifier),
+              ),
             ),
         ],
       ),
@@ -113,6 +113,40 @@ class _CountdownClock extends StatelessWidget {
   }
 }
 
+class _MobileCountdown extends StatelessWidget {
+  const _MobileCountdown({required this.seconds});
+
+  final int seconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final danger = seconds <= 60;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: danger ? const Color(0xFFFFEBEE) : const Color(0xFFE8F3F1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_outlined, size: 16, color: danger ? const Color(0xFFD32F2F) : AppConstants.primary),
+          const SizedBox(width: 5),
+          Text(
+            _formatHms(seconds),
+            style: TextStyle(
+              color: danger ? const Color(0xFFD32F2F) : AppConstants.primary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NegativeMarkingBanner extends StatelessWidget {
   const _NegativeMarkingBanner({required this.value});
 
@@ -149,10 +183,15 @@ String _formatNegativeMark(double value) =>
         : value.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
 
 class _ExamBody extends ConsumerStatefulWidget {
-  const _ExamBody({required this.session, required this.notifier});
+  const _ExamBody({
+    required this.session,
+    required this.notifier,
+    required this.onSubmit,
+  });
 
   final ExamSessionState session;
   final ExamSessionNotifier notifier;
+  final VoidCallback onSubmit;
 
   @override
   ConsumerState<_ExamBody> createState() => _ExamBodyState();
@@ -184,14 +223,30 @@ class _ExamBodyState extends ConsumerState<_ExamBody> {
   Widget build(BuildContext context) {
     final exam = widget.session.exam!;
     final questions = exam.questions;
+    final hasWarning = exam.negativeMarking > 0;
+    final submitIndex = questions.length + (hasWarning ? 1 : 0);
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: questions.length,
+      itemCount: submitIndex + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
-        final question = questions[index];
+        if (index == submitIndex) {
+          return FilledButton.icon(
+            onPressed: widget.onSubmit,
+            icon: const Icon(Icons.task_alt),
+            label: const Text('পরীক্ষা জমা দিন'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+            ),
+          );
+        }
+        if (hasWarning && index == 0) {
+          return _NegativeMarkingBanner(value: exam.negativeMarking);
+        }
+        final questionIndex = hasWarning ? index - 1 : index;
+        final question = questions[questionIndex];
         return QuestionCard(
-          index: index,
+          index: questionIndex,
           question: question,
           selectedOption: widget.session.selectedAnswers[question.id],
           onSelect: (option) =>

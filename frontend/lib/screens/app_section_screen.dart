@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 
 class AppSectionScreen extends StatelessWidget {
   const AppSectionScreen({
@@ -21,7 +22,8 @@ class AppSectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(title: Text(title)),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

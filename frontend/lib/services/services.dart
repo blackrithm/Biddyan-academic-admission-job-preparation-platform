@@ -83,6 +83,13 @@ class ProfileService {
     return ProfileStats.fromJson(json as Map<String, dynamic>);
   }
 
+  Future<List<RecentActivity>> getRecentActivity() async {
+    final json = await client.get('profile/recent-activity');
+    return (json as List<dynamic>)
+        .map((item) => RecentActivity.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<UserProfile> get() async {
     final json = await client.get('profile');
     return UserProfile.fromJson(json as Map<String, dynamic>);
@@ -115,6 +122,48 @@ class ProfileService {
   }
 }
 
+class RoutineService {
+  const RoutineService(this.client);
+
+  final ApiClient client;
+
+  Future<List<RoutinePlan>> list() async {
+    final json = await client.get('routine');
+    return (json as List<dynamic>)
+        .map((item) => RoutinePlan.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<RoutinePlan> create({
+    required String title,
+    required String category,
+    required String subject,
+    required int minutes,
+    required DateTime date,
+    required String note,
+  }) async {
+    final json = await client.post('routine', body: {
+      'title': title,
+      'category': category,
+      'subject': subject,
+      'durationMinutes': minutes,
+      'scheduledDate': _dateOnly(date),
+      'note': note,
+    });
+    return RoutinePlan.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<RoutinePlan> update(String id, Map<String, dynamic> values) async {
+    final json = await client.put('routine/$id', body: values);
+    return RoutinePlan.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> remove(String id) => client.delete('routine/$id');
+
+  static String _dateOnly(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+}
+
 class TopicService {
   const TopicService(this.client);
 
@@ -138,6 +187,34 @@ class TopicService {
 
   Future<void> update(String id, Map<String, dynamic> body) async {
     await client.put('topics/$id', body: body);
+  }
+
+  Future<void> reorder({
+    required String? parentId,
+    required List<String> topicIds,
+  }) async {
+    await client.put('topics/reorder', body: {
+      'parentId': parentId,
+      'topicIds': topicIds,
+    });
+  }
+
+  Future<void> move(String id, String? parentId) async {
+    await client.put('topics/$id/move', body: {'parentId': parentId});
+  }
+
+  Future<Map<String, dynamic>> copySubtopics({
+    required String sourceTopicId,
+    required String? targetParentId,
+    required List<String> childIds,
+    required bool copyQuestions,
+  }) async {
+    final json = await client.post('topics/$sourceTopicId/copy-subtopics', body: {
+      'targetParentId': targetParentId,
+      'childIds': childIds,
+      'copyQuestions': copyQuestions,
+    });
+    return Map<String, dynamic>.from(json as Map);
   }
 
   Future<void> delete(String id) async {
@@ -232,10 +309,97 @@ class QuestionService {
   }
 }
 
+class WrittenQuestionService {
+  const WrittenQuestionService(this.client);
+
+  final ApiClient client;
+
+  Future<List<WrittenQuestion>> list({
+    String? topicId,
+    String? setId,
+    bool includeChildren = false,
+  }) async {
+    final json = await client.get('written-questions', query: {
+      if (topicId != null) 'topicId': topicId,
+      if (setId != null) 'setId': setId,
+      if (includeChildren) 'includeChildren': 'true',
+    });
+    return (json as List<dynamic>)
+        .map((item) => WrittenQuestion.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<WrittenQuestion> create(Map<String, dynamic> body) async {
+    final json = await client.post('written-questions', body: body);
+    return WrittenQuestion.fromJson(Map<String, dynamic>.from(json as Map));
+  }
+
+  Future<Map<String, dynamic>> createSet({
+    required String topicId,
+    required String format,
+    required List<Map<String, dynamic>> questions,
+    String title = '',
+    String stimulus = '',
+    String? examType,
+    String? questionSet,
+    List<String> previousYears = const [],
+    String difficultyLevel = 'medium',
+    String source = 'admin',
+  }) async {
+    final json = await client.post('written-question-sets', body: {
+      'topic_id': topicId,
+      'format': format,
+      'title': title,
+      'stimulus': stimulus,
+      'exam_type': examType,
+      'question_set': questionSet,
+      'previous_years': previousYears,
+      'difficulty_level': difficultyLevel,
+      'source': source,
+      'questions': questions,
+    });
+    return Map<String, dynamic>.from(json as Map);
+  }
+
+  Future<Map<String, dynamic>> submit({
+    required String topicId,
+    required String userId,
+    required List<Map<String, String>> answers,
+  }) async {
+    final json = await client.post('written-exams/$topicId/submit', body: {
+      'userId': userId,
+      'answers': answers,
+    });
+    return Map<String, dynamic>.from(json as Map);
+  }
+}
+
 class ExamService {
   const ExamService(this.client);
 
   final ApiClient client;
+
+  Future<List<Map<String, dynamic>>> adminResults({String? examId}) async {
+    final json = await client.get('admin/exam-results', query: {
+      if (examId != null) 'examId': examId,
+    });
+    return (json as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  Future<void> updateAdminResult({
+    required String attemptId,
+    required double score,
+    required int correctCount,
+    required int wrongCount,
+  }) async {
+    await client.put('admin/exam-results/$attemptId', body: {
+      'score': score,
+      'correctCount': correctCount,
+      'wrongCount': wrongCount,
+    });
+  }
 
   Future<Exam> create(Map<String, dynamic> body) async {
     final json = await client.post('exams', body: body);
@@ -277,6 +441,73 @@ class ExamService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> batchList() async {
+    final json = await client.get('exam-batches');
+    return (json as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> myBatches() async {
+    final json = await client.get('exam-batches/mine');
+    return (json as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> batchDetails(String batchId) async {
+    final json = await client.get('exam-batches/$batchId');
+    return Map<String, dynamic>.from(json as Map);
+  }
+
+  Future<void> enrollInBatch(String batchId) async {
+    await client.post('exam-batches/$batchId/enroll');
+  }
+
+  Future<void> createBatch({
+    required String name,
+    required String examType,
+    required String description,
+    String? imageUrl,
+    required List<Map<String, String>> exams,
+  }) async {
+    await client.post('exam-batches', body: {
+      'name': name,
+      'examType': examType,
+      'description': description,
+      'imageUrl': imageUrl,
+      'exams': exams,
+    });
+  }
+
+  Future<void> updateBatch({
+    required String batchId,
+    required String name,
+    required String examType,
+    required String description,
+    String? imageUrl,
+    required List<Map<String, String>> exams,
+  }) async {
+    await client.put('exam-batches/$batchId', body: {
+      'name': name,
+      'examType': examType,
+      'description': description,
+      'imageUrl': imageUrl,
+      'exams': exams,
+    });
+  }
+
+  Future<void> reorderBatches(List<String> batchIds) async {
+    await client.put('exam-batches/reorder', body: {'batchIds': batchIds});
+  }
+
+  Future<List<Exam>> myCreatedExams() async {
+    final json = await client.get('exams/mine');
+    return (json as List<dynamic>)
+        .map((item) => Exam.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<Exam> getById(String id) async {
     try {
       final json = await client.get('exams/$id');
@@ -297,17 +528,47 @@ class ExamService {
     int? durationMinutes,
     String title = 'Instant Practice Exam',
   }) async {
-    try {
-      final json = await client.post('exams/generate-dynamic', body: {
+    final json = await client.post('exams/generate-dynamic', body: {
         'topicId': topicId,
         'questionCount': questionCount,
         if (durationMinutes != null) 'durationMinutes': durationMinutes,
         'title': title,
       });
-      return Exam.fromJson(json as Map<String, dynamic>);
-    } catch (_) {
-      return MockData.mockExam.copyWith(title: title);
-    }
+    final payload = json as Map<String, dynamic>;
+    final exam = payload['exam'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(payload['exam'] as Map<String, dynamic>)
+        : Map<String, dynamic>.from(payload);
+    exam['questions'] = payload['questions'] ?? const [];
+    return Exam.fromJson(exam);
+  }
+
+  Future<Exam> generateDynamicMulti({
+    required List<Map<String, dynamic>> topicQuestions,
+    required double perQuestionMark,
+    required double? passMark,
+    required double negativeMarking,
+    required int durationMinutes,
+    required String title,
+  }) async {
+    final json = await client.post('exams/generate-dynamic', body: {
+      'topicQuestions': topicQuestions,
+      'perQuestionMark': perQuestionMark,
+      'passMark': passMark,
+      'negativeMarking': negativeMarking,
+      'durationMinutes': durationMinutes,
+      'title': title,
+    });
+    final payload = json as Map<String, dynamic>;
+    final exam = Map<String, dynamic>.from(payload['exam'] as Map);
+    exam['questions'] = payload['questions'] ?? const [];
+    return Exam.fromJson(exam);
+  }
+
+  Future<List<Map<String, dynamic>>> participants(String examId) async {
+    final json = await client.get('exams/$examId/participants');
+    return (json as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
   }
 
   Future<AttemptResult> submit({
@@ -323,6 +584,7 @@ class ExamService {
       });
       return AttemptResult.fromJson(json as Map<String, dynamic>);
     } catch (_) {
+      if (examId != 'mock-exam-id' && !examId.startsWith('mock-')) rethrow;
       int correct = 0;
       int wrong = 0;
       final breakdown = <AnswerBreakdown>[];

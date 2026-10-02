@@ -5,12 +5,38 @@ import 'package:image_picker/image_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/constants.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+
+const _preparationCategories = <(String, IconData)>[
+  ('SSC', FontAwesomeIcons.school),
+  ('HSC', FontAwesomeIcons.school),
+  ('Varsity', FontAwesomeIcons.buildingColumns),
+  ('Medical', FontAwesomeIcons.userDoctor),
+  ('Engineering', FontAwesomeIcons.gears),
+  ('Agriculture', FontAwesomeIcons.seedling),
+  ('BCS প্রস্তুতি', FontAwesomeIcons.buildingColumns),
+  ('শিক্ষক নিবন্ধন', FontAwesomeIcons.graduationCap),
+  ('বার কাউন্সিল', FontAwesomeIcons.scaleBalanced),
+  ('ব্যাংক জব', FontAwesomeIcons.buildingColumns),
+  ('সরকারি চাকরি', FontAwesomeIcons.landmark),
+  ('নন-ক্যাডার', FontAwesomeIcons.userTie),
+];
+
+void _openPreparationCategory(BuildContext context, String title) {
+  final category = switch (title) {
+    'BCS প্রস্তুতি' => 'BCS',
+    'ব্যাংক জব' => 'Bank',
+    _ => title,
+  };
+  context.push('/subject-catalog?category=${Uri.encodeComponent(category)}');
+}
 
 class MobileDashboard extends ConsumerStatefulWidget {
   const MobileDashboard({super.key, this.initialIndex = 0});
@@ -32,6 +58,14 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
     _loadSidebarProfile();
   }
 
+  @override
+  void didUpdateWidget(covariant MobileDashboard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _selectedIndex = widget.initialIndex;
+    }
+  }
+
   Future<void> _loadSidebarProfile() async {
     if (apiClient.authToken == null || apiClient.authToken!.contains('.')) {
       try {
@@ -49,43 +83,21 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
       const _DashboardHome(),
       const _NoticeBoard(),
       const _ProfilePage(),
-      const _PackagesPage(),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: Center(
-          child: Image.asset('assets/biddyan_logo.png', height: 44),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(_drawerOpen ? Icons.close : Icons.menu),
-            tooltip: _drawerOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন',
-            onPressed: () {
-              if (_drawerOpen) {
-                Navigator.of(context).pop();
-              } else {
-                Scaffold.of(context).openDrawer();
-              }
-            },
-          ),
-        ),
-        actions: [
-          const SizedBox(width: 48),
-          IconButton(
-            tooltip: 'নোটিশ',
-            icon: const Badge(
-              label: Text('10'),
-              child: Icon(Icons.notifications_none),
-            ),
-            onPressed: () => setState(
-              () => _selectedIndex = _selectedIndex == 1 ? 0 : 1,
-            ),
-          ),
-        ],
+      appBar: BrandHeader(
+        menuOpen: _drawerOpen,
+        onMenu: (context) {
+          if (_drawerOpen) {
+            Navigator.of(context).pop();
+          } else {
+            Scaffold.of(context).openDrawer();
+          }
+        },
+        onNotification: () => BrandNotificationPopup.show(context),
       ),
-      drawer: _DashboardDrawer(
+      drawer: DashboardDrawer(
         profile: _sidebarProfile,
         isGuest: ref.watch(authNotifierProvider).user == null,
         isAdmin: ref.watch(authNotifierProvider).user?.role == 'admin',
@@ -106,7 +118,7 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
         ),
       ),
       bottomNavigationBar: BrandBottomNavigation(
-        selectedIndex: 0,
+        selectedIndex: _selectedIndex == 2 ? 4 : 0,
         onSelected: (index) {
           if (index == 0) {
             setState(() => _selectedIndex = 0);
@@ -119,8 +131,48 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
   }
 }
 
-class _DashboardHome extends StatelessWidget {
+class PreparationScreen extends StatelessWidget {
+  const PreparationScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('সেলফ স্টাডি & প্রশ্নব্যাংক')),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                _FeatureGrid(
+                  items: _preparationCategories,
+                  onTap: (title) => _openPreparationCategory(context, title),
+                ),
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: BrandBottomNavigation(
+          selectedIndex: 2,
+          onSelected: (index) => BrandBottomNavigation.navigate(context, index),
+        ),
+      );
+}
+
+class _DashboardHome extends ConsumerStatefulWidget {
   const _DashboardHome();
+
+  @override
+  ConsumerState<_DashboardHome> createState() => _DashboardHomeState();
+}
+
+class _DashboardHomeState extends ConsumerState<_DashboardHome> {
+  Future<void> _openExamCreator() async {
+    if (ref.read(authNotifierProvider).user == null) {
+      await context.push('/account');
+      return;
+    }
+    await context.push('/subject-catalog?create=1');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,34 +191,46 @@ class _DashboardHome extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
+        Card(
+          color: const Color(0xFFE8F3F1),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: AppConstants.primary,
+              child: Icon(Icons.auto_graph, color: Colors.white),
+            ),
+            title: const Text('Make Dynamic Exam', style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: const Text('নিজের মতো এক্সাম বানান, পরীক্ষা দিন, এক্সাম বন্ধুদের শেয়ার করে লিডারবোর্ডে র‍্যাঙ্ক দেখুন! '),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openExamCreator,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SectionTitle(title: 'এক্সাম ব্যাচ', color: AppConstants.primary),
+        const SizedBox(height: 8),
+        Card(
+          color: const Color(0xFFE8F3F1),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: AppConstants.primary,
+              child: Icon(Icons.groups_outlined, color: Colors.white),
+            ),
+            title: const Text('ফ্রি এক্সাম ব্যাচে যোগ দিন', style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: const Text('ব্যাচভিত্তিক রুটিনে বিভিন্ন ধরনের পরীক্ষা দিন'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/exam-batches'),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _SectionTitle(title: 'সেলফ স্টাডি & প্রশ্নব্যাংক', color: AppConstants.primary),
+        const SizedBox(height: 8),
         _FeatureGrid(
-          items: const [
-            ('SSC', FontAwesomeIcons.school),
-            ('HSC', FontAwesomeIcons.school),
-            ('Varsity', FontAwesomeIcons.buildingColumns),
-            ('Medical', FontAwesomeIcons.userDoctor),
-            ('Engineering', FontAwesomeIcons.gears),
-            ('Agriculture', FontAwesomeIcons.seedling),
-            ('BCS প্রস্তুতি', FontAwesomeIcons.buildingColumns),
-            ('শিক্ষক নিবন্ধন', FontAwesomeIcons.graduationCap),
-            ('বার কাউন্সিল', FontAwesomeIcons.scaleBalanced),
-            ('ব্যাংক জব', FontAwesomeIcons.buildingColumns),
-            ('সরকারি চাকরি', FontAwesomeIcons.landmark),
-            ('নন-ক্যাডার', FontAwesomeIcons.userTie),
-            
-          ],
-          onTap: (title) {
-            final category = switch (title) {
-              'BCS প্রস্তুতি' => 'BCS',
-              'ব্যাংক জব' => 'Bank',
-              _ => title,
-            };
-            context.push('/subject-catalog?category=${Uri.encodeComponent(category)}');
-          },
+          items: _preparationCategories,
+          onTap: (title) => _openPreparationCategory(context, title),
         ),
       ],
     );
   }
+
 }
 
 class _StudyProgressCard extends StatelessWidget {
@@ -303,29 +367,88 @@ class _ActivityMetric extends StatelessWidget {
 }
 
 class _RecentActivityList extends StatelessWidget {
-  const _RecentActivityList();
+  const _RecentActivityList({required this.activities});
+
+  final List<RecentActivity> activities;
 
   @override
-  Widget build(BuildContext context) => Card(
-        child: Column(
-          children: [
-            const ListTile(
-              leading: CircleAvatar(backgroundColor: Color(0xFFE8F3F1), child: Icon(Icons.check, color: AppConstants.primary)),
-              title: Text('SSC English Practice', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('৮/১০ সঠিক • ১২ মিনিট আগে'),
-              trailing: Text('৮০%', style: TextStyle(fontWeight: FontWeight.w800, color: AppConstants.primary)),
-            ),
-            const Divider(height: 1, indent: 68),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFFFFF2D8), child: Icon(Icons.history, color: Color(0xFFB77900))),
-              title: const Text('BCS Question Bank', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('শেষ দেখা: General Knowledge'),
-              trailing: const Icon(Icons.play_arrow, color: AppConstants.primary),
-              onTap: () => context.push('/question-bank?category=BCS'),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    if (activities.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Icon(Icons.auto_awesome_outlined, color: AppConstants.primary),
+              SizedBox(width: 12),
+              Expanded(child: Text('আপনি exam বা topic practice শুরু করলে এখানে সাম্প্রতিক activity দেখা যাবে।')),
+            ],
+          ),
         ),
       );
+    }
+
+    return Card(
+      child: Column(
+        children: [
+          for (var index = 0; index < activities.length; index++) ...[
+            _ActivityTile(activity: activities[index]),
+            if (index < activities.length - 1) const Divider(height: 1, indent: 68),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityTile extends StatelessWidget {
+  const _ActivityTile({required this.activity});
+
+  final RecentActivity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    final isExam = activity.type == 'exam';
+    final score = activity.totalMarks == null || activity.totalMarks == 0
+        ? null
+        : '${((activity.correctCount ?? 0) / activity.totalMarks! * 100).round()}%';
+    final details = isExam
+        ? '${activity.correctCount ?? 0}টি সঠিক • ${_relativeTime(activity.activityAt)}'
+        : '${activity.questionCount ?? 0}টি প্রশ্ন পড়া • ${_relativeTime(activity.activityAt)}';
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: isExam ? const Color(0xFFE8F3F1) : const Color(0xFFFFF2D8),
+        child: Icon(
+          isExam ? Icons.check : Icons.menu_book_outlined,
+          color: isExam ? AppConstants.primary : const Color(0xFFB77900),
+        ),
+      ),
+      title: Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text(details),
+      trailing: score != null
+          ? Text(score, style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.primary))
+          : const Icon(Icons.play_arrow, color: AppConstants.primary),
+      onTap: () {
+        if (isExam) {
+          context.push('/exam/${activity.relatedId}');
+        } else {
+          final uri = Uri(path: '/subject-practice', queryParameters: {
+            'topicId': activity.relatedId,
+            'topicName': activity.title,
+          });
+          context.push(uri.toString());
+        }
+      },
+    );
+  }
+
+  String _relativeTime(DateTime timestamp) {
+    final elapsed = DateTime.now().difference(timestamp);
+    if (elapsed.inMinutes < 1) return 'এইমাত্র';
+    if (elapsed.inHours < 1) return '${elapsed.inMinutes} মিনিট আগে';
+    if (elapsed.inDays < 1) return '${elapsed.inHours} ঘণ্টা আগে';
+    return '${elapsed.inDays} দিন আগে';
+  }
 }
 
 class _QuestionBankSection extends StatefulWidget {
@@ -535,24 +658,26 @@ class _FeatureGrid extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Row(
                           children: [
-                            FaIcon(items[index].$2,
-                                color: const Color(0xFF2C2F3D), size: 24),
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F3F1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: FaIcon(
+                                  items[index].$2,
+                                  color: AppConstants.primary,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                                 child: Text(items[index].$1,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis)),
-                            if (index.isOdd)
-                              const Align(
-                                alignment: Alignment.topRight,
-                                child: Padding(
-                                  padding: EdgeInsets.only(top: 7),
-                                  child: CircleAvatar(
-                                    radius: 5,
-                                    backgroundColor: AppConstants.accent,
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ),
@@ -706,11 +831,16 @@ class _ProfilePage extends ConsumerStatefulWidget {
 class _ProfilePageState extends ConsumerState<_ProfilePage> {
   UserProfile? _profile;
   ProfileStats? _stats;
+  List<RecentActivity> _activities = const [];
+  late Future<List<Exam>> _myExams;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _myExams = ref.read(authNotifierProvider).user == null
+        ? Future.value(const <Exam>[])
+        : ExamService(apiClient).myCreatedExams();
     _loadProfile();
   }
 
@@ -718,13 +848,18 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
     try {
       final profile = await ProfileService(apiClient).get();
       ProfileStats? stats;
+      List<RecentActivity> activities = const [];
       try {
         stats = await ProfileService(apiClient).getStats();
+      } catch (_) {}
+      try {
+        activities = await ProfileService(apiClient).getRecentActivity();
       } catch (_) {}
       if (mounted) {
         setState(() {
           _profile = profile;
           _stats = stats;
+          _activities = activities;
         });
       }
     } catch (_) {
@@ -750,6 +885,7 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
     if (profile == null) {
       return const Center(child: Text('Profile লোড করা যায়নি'));
     }
+    final isSignedIn = ref.watch(authNotifierProvider).user != null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
       children: [
@@ -772,12 +908,113 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
         const SizedBox(height: 10),
         _ActivitySummaryGrid(stats: _stats),
         const SizedBox(height: 18),
+        Row(
+          children: [
+            const Expanded(
+              child: _DashboardSectionHeading(
+                title: 'আমার তৈরি Dynamic Exam',
+                subtitle: 'শেয়ার লিংক, অংশগ্রহণকারী ও rank',
+              ),
+            ),
+            IconButton(
+              tooltip: 'তালিকা refresh করুন',
+              onPressed: () => setState(() => _myExams = ExamService(apiClient).myCreatedExams()),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (!isSignedIn)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('নিজের exam ও rank দেখতে sign in করুন'),
+              trailing: TextButton(onPressed: () => context.push('/account'), child: const Text('Sign in')),
+            ),
+          )
+        else
+          FutureBuilder<List<Exam>>(
+            future: _myExams,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                return Card(
+                  child: ListTile(
+                    title: const Text('তৈরি exam লোড করা যায়নি'),
+                    onTap: () => setState(() => _myExams = ExamService(apiClient).myCreatedExams()),
+                  ),
+                );
+              }
+              final exams = snapshot.data ?? const <Exam>[];
+              if (exams.isEmpty) {
+                return const Card(
+                  child: ListTile(
+                    leading: Icon(Icons.assignment_add),
+                    title: Text('এখনো কোনো dynamic exam তৈরি করেননি'),
+                    subtitle: Text('Home-এর Make Dynamic Exam থেকে প্রথম exam তৈরি করুন'),
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final exam in exams)
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(exam.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 3),
+                            Text('${exam.questionCount ?? exam.questions.length}টি প্রশ্ন • ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ${exam.durationMinutes} মিনিট'),
+                            Wrap(
+                              alignment: WrapAlignment.end,
+                              spacing: 4,
+                              children: [
+                                IconButton(
+                                  tooltip: 'লিংক কপি করুন',
+                                  onPressed: () async {
+                                    final shareUrl = '${Uri.base.origin}/#/exam/${exam.id}';
+                                    await Clipboard.setData(ClipboardData(text: shareUrl));
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exam link কপি হয়েছে')));
+                                    }
+                                  },
+                                  icon: const Icon(Icons.copy_outlined),
+                                ),
+                                IconButton(
+                                  tooltip: 'WhatsApp-এ share করুন',
+                                  onPressed: () => _shareExam(exam),
+                                  icon: const Icon(Icons.share_outlined),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => context.push('/exam/${exam.id}/participants'),
+                                  icon: const Icon(Icons.leaderboard_outlined, size: 18),
+                                  label: const Text('ফলাফল ও rank'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        const SizedBox(height: 18),
         const _DashboardSectionHeading(
           title: 'সাম্প্রতিক activity',
           subtitle: 'আপনার শেখার momentum ধরে রাখুন',
         ),
         const SizedBox(height: 10),
-        const _RecentActivityList(),
+        _RecentActivityList(activities: _activities),
         const SizedBox(height: 18),
         Card(
           child: ListTile(
@@ -793,6 +1030,14 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
         ),
       ],
     );
+  }
+
+  Future<void> _shareExam(Exam exam) async {
+    final shareUrl = '${Uri.base.origin}/#/exam/${exam.id}';
+    final shareUri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent('${exam.title}\n$shareUrl')}');
+    if (!await launchUrl(shareUri, mode: LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share link খোলা যায়নি')));
+    }
   }
 
   Future<void> _toggleCategory(String category) async {
@@ -972,75 +1217,189 @@ class _ProfileIdentityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: Color(0xFFDCECEA),
-                    backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
-                    child: imageUrl == null
-                        ? const Icon(Icons.person, size: 38, color: AppConstants.primary)
-                        : null,
-                  ),
-                  Positioned(
-                    right: -3,
-                    bottom: -3,
-                    child: CircleAvatar(
-                      radius: 12,
-                      backgroundColor: AppConstants.primary,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        iconSize: 14,
-                        color: Colors.white,
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        onPressed: onPhoto,
-                      ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 620;
+            final actions = _IdentityActions(
+              onSettings: onSettings,
+              onEditName: onEditName,
+            );
+            final selector = _PreparationTypeDropdown(
+              selected: selectedCategories,
+              onSelected: onCategorySelected,
+            );
+            final mobileSelector = _PreparationTypeDropdown(
+              selected: selectedCategories,
+              onSelected: onCategorySelected,
+              centered: true,
+            );
+            return Padding(
+              padding: EdgeInsets.all(isWide ? 18 : 14),
+              child: isWide
+                  ? Row(
+                      children: [
+                        _ProfileAvatar(imageUrl: imageUrl, onPhoto: onPhoto),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: _IdentityDetails(
+                            name: name,
+                            selectedCategories: selectedCategories,
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        selector,
+                        const SizedBox(width: 6),
+                        actions,
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _ProfileAvatar(imageUrl: imageUrl, onPhoto: onPhoto),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: _IdentityDetails(
+                                name: name,
+                                selectedCategories: selectedCategories,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            mobileSelector,
+                            const SizedBox(width: 2),
+                            actions,
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+            );
+          },
+        ),
+      );
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.imageUrl, required this.onPhoto});
+
+  final String? imageUrl;
+  final VoidCallback onPhoto;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          CircleAvatar(
+            radius: 34,
+            backgroundColor: const Color(0xFFDCECEA),
+            backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
+            child: imageUrl == null
+                ? const Icon(Icons.person, size: 38, color: AppConstants.primary)
+                : null,
+          ),
+          Positioned(
+            right: -3,
+            bottom: -3,
+            child: CircleAvatar(
+              radius: 12,
+              backgroundColor: AppConstants.primary,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                iconSize: 14,
+                color: Colors.white,
+                icon: const Icon(Icons.camera_alt_outlined),
+                onPressed: onPhoto,
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 3),
-                    const Text('Student profile', style: TextStyle(color: AppConstants.mutedText)),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F3F1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text('Active learner', style: TextStyle(color: AppConstants.primary, fontSize: 12, fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
-              ),
-              _PreparationTypeDropdown(
-                selected: selectedCategories,
-                onSelected: onCategorySelected,
-              ),
-              IconButton(
-                tooltip: 'Settings',
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: onSettings,
-              ),
-              IconButton(
-                tooltip: 'নাম পরিবর্তন করুন',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: onEditName,
-              ),
-            ],
+            ),
+          ),
+        ],
+      );
+}
+
+class _IdentityDetails extends StatelessWidget {
+  const _IdentityDetails({required this.name, required this.selectedCategories});
+
+  final String name;
+  final List<String> selectedCategories;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 3),
+          const Text('Student profile', style: TextStyle(color: AppConstants.mutedText)),
+          if (selectedCategories.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 5,
+              runSpacing: 4,
+              children: [
+                for (final category in selectedCategories.take(2))
+                  _PreparationTag(label: category),
+                if (selectedCategories.length > 2)
+                  _PreparationTag(label: '+${selectedCategories.length - 2}'),
+              ],
+            ),
+          ],
+        ],
+      );
+}
+
+class _PreparationTag extends StatelessWidget {
+  const _PreparationTag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F3F1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppConstants.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
           ),
         ),
+      );
+}
+
+class _IdentityActions extends StatelessWidget {
+  const _IdentityActions({required this.onSettings, required this.onEditName});
+
+  final VoidCallback onSettings;
+  final VoidCallback onEditName;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Settings',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: onSettings,
+          ),
+          IconButton(
+            tooltip: 'নাম পরিবর্তন করুন',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: onEditName,
+          ),
+        ],
       );
 }
 
@@ -1048,10 +1407,12 @@ class _PreparationTypeDropdown extends StatelessWidget {
   const _PreparationTypeDropdown({
     required this.selected,
     required this.onSelected,
+    this.centered = false,
   });
 
   final List<String> selected;
   final ValueChanged<String> onSelected;
+  final bool centered;
 
   static const _categories = [
     ('Academic', Icons.school_outlined),
@@ -1070,10 +1431,11 @@ class _PreparationTypeDropdown extends StatelessWidget {
             ? selected.first
             : '${selected.length} selected';
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Preparation Type',
+          textAlign: centered ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             color: AppConstants.mutedText,
             fontSize: 10,
@@ -1136,138 +1498,382 @@ class _PreparationTypeDropdown extends StatelessWidget {
   }
 }
 
-class _PackagesPage extends StatelessWidget {
-  const _PackagesPage();
-  @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text('Packages',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          for (final package in const [
-            ('Monthly', '৳499'),
-            ('Half-yearly', '৳1999'),
-            ('Yearly', '৳2999')
-          ])
-            Card(
-              child: ListTile(
-                leading:
-                    const Icon(Icons.workspace_premium, color: Colors.orange),
-                title: Text(package.$1,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('সব পরীক্ষা ও স্টাডি কনটেন্টে অ্যাক্সেস'),
-                trailing:
-                    FilledButton(onPressed: () {}, child: Text(package.$2)),
-              ),
-            ),
-        ],
-      );
-}
-
-class _DashboardDrawer extends StatelessWidget {
-  const _DashboardDrawer({
-    required this.profile,
-    required this.isGuest,
-    required this.isAdmin,
-    required this.onNavigate,
-    required this.onAccount,
-    required this.onLogout,
+class DashboardDrawer extends ConsumerWidget {
+  const DashboardDrawer({
+    super.key,
+    this.profile,
+    this.isGuest,
+    this.isAdmin,
+    this.onNavigate,
+    this.onAccount,
+    this.onLogout,
   });
   final UserProfile? profile;
-  final bool isGuest;
-  final bool isAdmin;
-  final ValueChanged<int> onNavigate;
-  final VoidCallback onAccount;
-  final VoidCallback onLogout;
+  final bool? isGuest;
+  final bool? isAdmin;
+  final ValueChanged<int>? onNavigate;
+  final VoidCallback? onAccount;
+  final VoidCallback? onLogout;
 
   @override
-  Widget build(BuildContext context) {
-    final name = isGuest ? 'Guest-Biddyan-User' : (profile?.displayName ?? 'শিক্ষার্থী');
-    final phone = profile?.phoneNumber ?? '';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = ref.watch(authNotifierProvider).user;
+    final signedInAsGuest = isGuest ?? authUser == null;
+    final adminUser = isAdmin ?? authUser?.role == 'admin';
+    final name = signedInAsGuest
+        ? 'Guest-Biddyan-User'
+        : (profile?.displayName ?? authUser?.displayName ?? 'শিক্ষার্থী');
+    final phone = profile?.phoneNumber ?? authUser?.phoneNumber ?? '';
     final imageUrl = profile?.profileImageUrl;
+    final preparationTypes = profile?.preparationCategories ?? const <String>[];
+    final width = MediaQuery.sizeOf(context).width;
+
+    void navigate(String route) {
+      Navigator.pop(context);
+      context.go(route);
+    }
+
+    void showComingSoon(String title) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$title শীঘ্রই যুক্ত হবে।')),
+      );
+    }
+
+    Future<void> copyInviteLink() async {
+      await Clipboard.setData(
+        ClipboardData(text: Uri.base.replace(path: '/', query: null, fragment: null).toString()),
+      );
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invite link কপি হয়েছে।')),
+      );
+    }
+
     return Drawer(
-      backgroundColor: const Color(0xFFEAF5F8),
-        child: ListView(
-          padding: EdgeInsets.zero,
+      width: width > 420 ? 380 : width * 0.9,
+      backgroundColor: const Color(0xFFF4F7F6),
+      child: SafeArea(
+        child: Column(
           children: [
-            UserAccountsDrawerHeader(
-              accountName: Text(
-                name,
-                style: const TextStyle(
-                  color: AppConstants.primary,
-                  fontWeight: FontWeight.w700,
-                ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 12, 14, 18),
+              decoration: const BoxDecoration(
+                color: AppConstants.primary,
+                borderRadius: BorderRadius.only(bottomRight: Radius.circular(24)),
               ),
-              accountEmail: isGuest
-                  ? const SizedBox.shrink()
-                  : Text(
-                      phone,
-                      style: const TextStyle(color: AppConstants.mutedText),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13)),
+                        child: Image.asset('assets/biddyan_logo.png', fit: BoxFit.contain),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text('বিদ্বান', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                      ),
+                      IconButton(
+                        tooltip: 'মেনু বন্ধ করুন',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 25,
+                        backgroundColor: const Color(0xFFDCEDEC),
+                        backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl),
+                        child: imageUrl == null
+                            ? const Icon(Icons.person_outline, color: AppConstants.primary, size: 28)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                            if (phone.isNotEmpty)
+                              Text(phone, style: const TextStyle(color: Color(0xFFCCE0DE), fontSize: 12)),
+                            if (signedInAsGuest)
+                              const Text('শেখা শুরু করতে আপনার অ্যাকাউন্টে প্রবেশ করুন', maxLines: 2, style: TextStyle(color: Color(0xFFCCE0DE), fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (preparationTypes.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final type in preparationTypes.take(2))
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(color: const Color(0xFF24575A), borderRadius: BorderRadius.circular(16)),
+                            child: Text(type, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                      ],
                     ),
-              currentAccountPicture: imageUrl == null
-                  ? Image.asset('assets/biddyan_logo.png')
-                  : CircleAvatar(backgroundImage: NetworkImage(imageUrl)),
-              decoration: const BoxDecoration(color: Color(0xFFEAF5F8)),
-            ),
-            ListTile(
-                leading: const Icon(Icons.auto_awesome, color: AppConstants.primary),
-                title: const Text('বিদ্বান AI'),
-                subtitle: const Text('প্রশ্ন করুন, সন্দেহ দূর করুন'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/biddyan-ai');
-                }),
-            ListTile(
-                leading: const Icon(Icons.analytics),
-                title: const Text('Performance'),
-                onTap: () => onNavigate(2)),
-            ListTile(
-                leading: const Icon(Icons.card_giftcard),
-                title: const Text('Referral Program'),
-                onTap: () {}),
-            ListTile(
-                leading: const Icon(Icons.workspace_premium),
-                title: const Text('Packages'),
-                onTap: () => onNavigate(3)),
-            ListTile(
-                leading: const Icon(Icons.person_add_alt_1),
-                title: const Text('Account খুলুন / Login'),
-                onTap: () {
-                  Navigator.pop(context);
-                  onAccount();
-                }),
-            const Divider(),
-            ListTile(
-                leading: const Icon(Icons.support_agent),
-                title: const Text('Contact Support'),
-                onTap: () {}),
-            ListTile(
-                leading: const Icon(Icons.help_outline),
-                title: const Text('FAQs'),
-                onTap: () {}),
-            ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text('About Us'),
-                onTap: () {}),
-            if (isAdmin) ...[
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.admin_panel_settings),
-                title: const Text('Admin Panel'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/admin');
-                },
+                  ],
+                  if (signedInAsGuest) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (onAccount != null) {
+                            onAccount!();
+                          } else {
+                            context.push('/account');
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppConstants.primary,
+                          minimumSize: const Size.fromHeight(42),
+                        ),
+                        icon: const Icon(Icons.login),
+                        label: const Text('Sign up / Login'),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: onLogout,
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+                children: [
+                  const _DrawerSectionLabel('শেখা ও প্রস্তুতি'),
+                  _DrawerMenuItem(
+                    icon: Icons.home_outlined,
+                    title: 'ড্যাশবোর্ড',
+                    onTap: () {
+                      if (onNavigate != null) {
+                        onNavigate!(2);
+                      } else {
+                        navigate('/profile');
+                      }
+                    },
+                  ),
+                  _DrawerMenuItem(icon: Icons.auto_awesome_outlined, title: 'বিদ্বান AI', onTap: () => navigate('/biddyan-ai')),
+                  _DrawerMenuItem(icon: Icons.groups_outlined, title: 'এক্সাম ব্যাচ', onTap: () => navigate('/exam-batches')),
+                  _DrawerMenuItem(icon: Icons.calendar_month_outlined, title: 'এক্সাম ক্যালেন্ডার', onTap: () => navigate('/exam-calendar')),
+                  _DrawerMenuItem(icon: Icons.menu_book_outlined, title: 'সেলফ স্টাডি & প্রশ্নব্যাংক', onTap: () => navigate('/preparation')),
+                  _DrawerMenuItem(
+                    icon: Icons.auto_fix_high_outlined,
+                    title: 'Make Dynamic Exam',
+                    onTap: () {
+                      if (signedInAsGuest) {
+                        Navigator.pop(context);
+                        if (onAccount != null) {
+                          onAccount!();
+                        } else {
+                          context.push('/account');
+                        }
+                      } else {
+                        navigate('/subject-catalog?create=1');
+                      }
+                    },
+                  ),
+                  _DrawerMenuItem(icon: Icons.library_books_outlined, title: 'বই ও রিসোর্স', onTap: () => navigate('/books')),
+                  _DrawerMenuItem(icon: Icons.edit_calendar_outlined, title: 'রুটিন / Study Plan', onTap: () => navigate('/routine')),
+                  _DrawerMenuItem(icon: Icons.forum_outlined, title: 'Group Study', onTap: () => showComingSoon('Group Study')),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1, indent: 12, endIndent: 12),
+                  const SizedBox(height: 12),
+                  const _DrawerSectionLabel('সহায়তা ও তথ্য'),
+                  _DrawerMenuItem(icon: Icons.support_agent_outlined, title: 'Contact Support', onTap: () => showComingSoon('Contact Support')),
+                  _DrawerMenuItem(icon: Icons.info_outline, title: 'About Us', onTap: () => showComingSoon('About Us')),
+                  _DrawerMenuItem(icon: Icons.fact_check_outlined, title: 'Terms & Conditions', onTap: () => showComingSoon('Terms & Conditions')),
+                  _DrawerMenuItem(icon: Icons.help_outline, title: 'FAQs', onTap: () => showComingSoon('FAQs')),
+                  _DrawerMenuItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () => showComingSoon('Privacy Policy')),
+                  _DrawerMenuItem(icon: Icons.gpp_good_outlined, title: 'Disclaimer', onTap: () => showComingSoon('Disclaimer')),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Color(0xFFE3EAE9))),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      if (adminUser)
+                        _DrawerFooterAction(
+                          icon: Icons.admin_panel_settings_outlined,
+                          label: 'Admin Panel',
+                          onTap: () => navigate('/admin'),
+                        ),
+                      if (!signedInAsGuest)
+                        _DrawerFooterAction(
+                          icon: Icons.logout,
+                          label: 'Logout',
+                          onTap: () {
+                            Navigator.pop(context);
+                            if (onLogout != null) {
+                              onLogout!();
+                            } else {
+                              ref.read(authNotifierProvider.notifier).logout();
+                            }
+                          },
+                          destructive: true,
+                        ),
+                      _DrawerFooterAction(
+                        icon: Icons.person_add_alt_1,
+                        label: 'Invite friend',
+                        onTap: copyInviteLink,
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('আমাদের সাথে যুক্ত থাকুন', style: TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+                      const SizedBox(width: 6),
+                      _SocialButton(icon: FontAwesomeIcons.facebook, color: const Color(0xFF1877F2), url: Uri.parse('https://www.facebook.com/'), label: 'Facebook'),
+                      _SocialButton(icon: FontAwesomeIcons.youtube, color: const Color(0xFFFF0000), url: Uri.parse('https://www.youtube.com/'), label: 'YouTube'),
+                      _SocialButton(icon: FontAwesomeIcons.telegram, color: const Color(0xFF229ED9), url: Uri.parse('https://t.me/'), label: 'Telegram'),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Text('All rights reserved by Softwaid.com | 2026', textAlign: TextAlign.center, style: TextStyle(color: AppConstants.mutedText, fontSize: 10)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-      );
+      ),
+    );
   }
+}
+
+class _DrawerSectionLabel extends StatelessWidget {
+  const _DrawerSectionLabel(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: Text(
+          title,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppConstants.mutedText),
+        ),
+      );
+}
+
+class _DrawerMenuItem extends StatelessWidget {
+  const _DrawerMenuItem({required this.icon, required this.title, required this.onTap});
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(color: const Color(0xFFE5F0EF), borderRadius: BorderRadius.circular(10)),
+                    child: Icon(icon, size: 18, color: AppConstants.primary),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF24383A)))),
+                  const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8A9997)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _DrawerFooterAction extends StatelessWidget {
+  const _DrawerFooterAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 17),
+        label: Text(label),
+        style: TextButton.styleFrom(
+          foregroundColor: destructive ? AppConstants.accent : AppConstants.primary,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        ),
+      );
+}
+
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({
+    required this.icon,
+    required this.color,
+    required this.url,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Uri url;
+  final String label;
+
+  Future<void> _open() async {
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: label,
+        onPressed: _open,
+        icon: FaIcon(icon, color: color, size: 21),
+      );
 }

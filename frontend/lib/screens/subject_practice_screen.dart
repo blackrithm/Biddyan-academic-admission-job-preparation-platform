@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 import '../widgets/interactive_question_card.dart';
 
 class SubjectPracticeScreen extends StatefulWidget {
@@ -56,9 +57,8 @@ class _SubjectPracticeScreenState extends State<SubjectPracticeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(
-        title: Text(widget.topicName ?? 'Exam Type'),
-      ),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: FutureBuilder<List<Question>>(
         future: _questions,
         builder: (context, snapshot) {

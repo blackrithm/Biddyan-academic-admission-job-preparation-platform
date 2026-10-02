@@ -18,12 +18,14 @@ class AdminQuestionBank extends StatefulWidget {
 class _AdminQuestionBankState extends State<AdminQuestionBank> {
   final _setController = TextEditingController();
   final _examTypeController = TextEditingController();
+  final _yearController = TextEditingController();
   final _totalMarksController = TextEditingController(text: '50');
   final _passMarksController = TextEditingController(text: '20');
   final _negativeMarksController = TextEditingController(text: '0.25');
   final _durationController = TextEditingController(text: '60');
   final _jsonController = TextEditingController();
   String? _topicId;
+  String _uploadType = 'mcq';
   String _difficulty = 'medium';
   bool _saving = false;
   String? _error;
@@ -33,6 +35,7 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
   void dispose() {
     _setController.dispose();
     _examTypeController.dispose();
+    _yearController.dispose();
     _totalMarksController.dispose();
     _passMarksController.dispose();
     _negativeMarksController.dispose();
@@ -75,10 +78,37 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
                         for (final row in flatTopics)
                           DropdownMenuItem(value: row.node.id, child: Text('${'  ' * row.depth}${row.node.name}')),
                       ],
-                      onChanged: (value) => setState(() => _topicId = value),
+                      onChanged: (value) => setState(() {
+                        _topicId = value;
+                        _uploadType = flatTopics
+                                .where((row) => row.node.id == value)
+                                .firstOrNull
+                                ?.node
+                                .questionType ??
+                            'mcq';
+                      }),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: _uploadType,
+                      decoration: const InputDecoration(labelText: 'Question type'),
+                      items: const [
+                        DropdownMenuItem(value: 'mcq', child: Text('MCQ')),
+                        DropdownMenuItem(value: 'written', child: Text('Written / CQ')),
+                      ],
+                      onChanged: (value) => setState(() => _uploadType = value ?? 'mcq'),
                     ),
                     const SizedBox(height: 10),
                     TextField(controller: _setController, decoration: const InputDecoration(labelText: 'Question set name', hintText: 'যেমন: SSC Model Test 1')),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _yearController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Year',
+                        hintText: 'যেমন: 2024 (ঐচ্ছিক)',
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -98,44 +128,51 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _passMarksController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'পাস মার্ক'),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _totalMarksController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(labelText: 'মোট মার্ক'),
+                    if (_uploadType == 'mcq') ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _passMarksController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(labelText: 'পাস মার্ক'),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _totalMarksController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'মোট মার্ক'),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: _negativeMarksController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(labelText: 'নেগেটিভ মার্ক'),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: _negativeMarksController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'নেগেটিভ মার্ক'),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _durationController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'সময় (মিনিট)'),
-                    ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _durationController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'সময় (মিনিট)'),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     TextField(
                       controller: _jsonController,
                       minLines: 8,
                       maxLines: 14,
-                      decoration: const InputDecoration(labelText: 'Question set JSON', hintText: '[{"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"A"}]'),
+                      decoration: InputDecoration(
+                        labelText: _uploadType == 'written' ? 'Written / CQ JSON' : 'Question set JSON',
+                        hintText: _uploadType == 'written'
+                            ? '{"format":"cq","stimulus":"...","questions":[{"question_text":"...","model_answer":"...","marks":5}]}'
+                            : '[{"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"A"}]',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -163,14 +200,21 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
     }
     final totalMarks = double.tryParse(_totalMarksController.text.trim());
     final passMark = double.tryParse(_passMarksController.text.trim());
-    if (totalMarks == null || passMark == null ||
+    if (_uploadType == 'mcq' &&
+      (totalMarks == null || passMark == null ||
         double.tryParse(_negativeMarksController.text.trim()) == null ||
-        int.tryParse(_durationController.text.trim()) == null) {
+        int.tryParse(_durationController.text.trim()) == null)) {
       setState(() => _error = 'মোট মার্ক, পাস মার্ক, নেগেটিভ মার্ক এবং সময় সঠিকভাবে দিন');
       return;
     }
-    if (passMark < 0 || passMark > totalMarks) {
+    if (_uploadType == 'mcq' && (passMark! < 0 || passMark > totalMarks!)) {
       setState(() => _error = 'পাস মার্ক ০ থেকে মোট মার্কের মধ্যে দিন');
+      return;
+    }
+    final yearText = _yearController.text.trim();
+    final year = yearText.isEmpty ? null : int.tryParse(yearText);
+    if (yearText.isNotEmpty && (year == null || year < 1900 || year > 2100)) {
+      setState(() => _error = 'Year ১৯০০ থেকে ২১০০-এর মধ্যে দিন');
       return;
     }
     setState(() {
@@ -180,9 +224,73 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
     });
     try {
       final decoded = jsonDecode(_jsonController.text);
+      final yearText = _yearController.text.trim();
+      final year = yearText.isEmpty ? null : int.tryParse(yearText);
+      if (yearText.isNotEmpty && (year == null || year < 1900 || year > 2100)) {
+        throw const FormatException('Year ১৯০০ থেকে ২১০০-এর মধ্যে দিন');
+      }
+      if (_uploadType == 'written') {
+        final List<dynamic> rawSets;
+        if (decoded is Map && decoded['sets'] is List) {
+          rawSets = decoded['sets'] as List<dynamic>;
+        } else if (decoded is Map) {
+          rawSets = [decoded];
+        } else if (decoded is List) {
+          rawSets = [
+            {'format': 'written', 'questions': decoded},
+          ];
+        } else {
+          throw const FormatException('Written set object বা sets array দিন');
+        }
+        var totalQuestionCount = 0;
+        for (final rawSet in rawSets) {
+          if (rawSet is! Map) throw const FormatException('প্রতিটি Written set JSON object হতে হবে');
+          final set = Map<String, dynamic>.from(rawSet);
+          final rawQuestions = set['questions'];
+          if (rawQuestions is! List || rawQuestions.isEmpty) {
+            throw const FormatException('প্রতিটি set-এ questions array দিন');
+          }
+          final questions = rawQuestions
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
+          final years = (set['previous_years'] as List<dynamic>? ?? const [])
+              .map((value) => value.toString())
+              .toList();
+          if (year != null && !years.contains(year.toString())) years.add(year.toString());
+          await WrittenQuestionService(apiClient).createSet(
+            topicId: _topicId!,
+            format: (set['format'] ?? 'written').toString(),
+            title: (set['title'] ?? _setController.text.trim()).toString(),
+            stimulus: (set['stimulus'] ?? '').toString(),
+            examType: (set['exam_type'] ?? _examTypeController.text).toString(),
+            questionSet: (set['question_set'] ?? _setController.text).toString(),
+            previousYears: years,
+            difficultyLevel: (set['difficulty_level'] ?? _difficulty).toString(),
+            source: 'question-bank',
+            questions: questions,
+          );
+          totalQuestionCount += questions.length;
+        }
+        if (mounted) {
+          setState(() {
+            _jsonController.clear();
+            _success = '$totalQuestionCountটি Written প্রশ্ন upload হয়েছে';
+          });
+        }
+        return;
+      }
       final rawQuestions = decoded is Map ? decoded['questions'] : decoded;
       if (rawQuestions is! List || rawQuestions.isEmpty) throw const FormatException('questions array দিন');
       final questions = rawQuestions.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      for (final question in questions) {
+        final years = (question['previous_years'] as List<dynamic>? ?? const [])
+            .map((value) => value.toString())
+            .toList();
+        if (year != null && !years.contains(year.toString())) {
+          years.add(year.toString());
+        }
+        question['previous_years'] = years;
+      }
       final insertedQuestions = await QuestionService(apiClient).bulkCreateWithQuestions(
         topicId: _topicId!,
         questions: questions,
@@ -197,8 +305,8 @@ class _AdminQuestionBankState extends State<AdminQuestionBank> {
         title: _setController.text.trim(),
         topicId: _topicId,
         questionIds: insertedQuestions.map((question) => question.id).toList(),
-        totalMarks: totalMarks,
-        passMark: passMark,
+        totalMarks: totalMarks!,
+        passMark: passMark!,
         negativeMarking: double.parse(_negativeMarksController.text.trim()),
         duration: int.parse(_durationController.text.trim()),
       );

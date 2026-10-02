@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 
 class PreviousQuestionBankScreen extends StatefulWidget {
   const PreviousQuestionBankScreen({super.key});
@@ -85,7 +86,8 @@ class _PreviousQuestionBankScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(title: const Text('Previous Question Bank')),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: ListView(
         padding: const EdgeInsets.all(14),
         children: [

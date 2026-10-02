@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 import '../core/api_client.dart';
 import '../models/models.dart';
@@ -43,11 +45,56 @@ class AuthState {
 /// [logout] through `ref.read(authNotifierProvider.notifier)` and listens to
 /// state via `ref.watch(authNotifierProvider)`.
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState(isGuest: true)) {
-    continueAsGuest();
+  AuthNotifier() : super(const AuthState(isLoading: true)) {
+    _restoreSession();
   }
 
-  void continueAsGuest() {
+  static const _tokenKey = 'biddyan.auth.token';
+  static const _userKey = 'biddyan.auth.user';
+
+  Future<void> _restoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey);
+      final encodedUser = prefs.getString(_userKey);
+      if (token != null && encodedUser != null) {
+        final data = jsonDecode(encodedUser) as Map<String, dynamic>;
+        final user = AuthUser(
+          token: token,
+          userId: data['userId'] as String,
+          phoneNumber: data['phoneNumber'] as String? ?? '',
+          displayName: data['displayName'] as String? ?? 'Biddyan User',
+          role: data['role'] as String? ?? 'student',
+          email: data['email'] as String?,
+        );
+        apiClient.authToken = token;
+        state = AuthState(user: user);
+        return;
+      }
+    } catch (_) {}
+    continueAsGuest(persist: false);
+  }
+
+  Future<void> _persistSession(AuthUser user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, user.token);
+    await prefs.setString(_userKey, jsonEncode({
+      'userId': user.userId,
+      'phoneNumber': user.phoneNumber,
+      'displayName': user.displayName,
+      'role': user.role,
+      'email': user.email,
+    }));
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userKey);
+  }
+
+  void continueAsGuest({bool persist = true}) {
+    if (persist) _clearSession();
     final guestId = 'b1dd1a11-0000-4000-8000-${DateTime.now().microsecondsSinceEpoch.toString().padLeft(12, '0').substring(0, 12)}';
     apiClient.authToken = guestId;
     state = const AuthState(isGuest: true);
@@ -67,6 +114,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         guestId: _guestIdFromToken(apiClient.authToken),
       );
       apiClient.authToken = user.token;
+      await _persistSession(user);
       state = AuthState(user: user);
     } catch (error) {
       apiClient.authToken = null;
@@ -87,6 +135,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         role: role,
       );
       apiClient.authToken = user.token;
+      await _persistSession(user);
       state = AuthState(user: user);
     } catch (error) {
       apiClient.authToken = null;
@@ -99,6 +148,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await AuthService(apiClient).verifyOtp(phoneNumber, otp);
       apiClient.authToken = user.token;
+      await _persistSession(user);
       state = AuthState(user: user);
     } catch (error) {
       state = AuthState(errorMessage: error.toString());
@@ -120,13 +170,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: 'user@biddyan.id',
       );
       apiClient.authToken = user.token;
+      await _persistSession(user);
       state = AuthState(user: user);
     } catch (error) {
       state = AuthState(errorMessage: error.toString());
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
+    await _clearSession();
     apiClient.authToken = null;
     state = const AuthState();
   }

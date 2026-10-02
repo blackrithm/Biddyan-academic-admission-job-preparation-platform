@@ -25,6 +25,7 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
   final _cCtrl = TextEditingController();
   final _dCtrl = TextEditingController();
   final _explanationCtrl = TextEditingController();
+  final _stimulusCtrl = TextEditingController();
   final _tagCtrl = TextEditingController();
   final _bulkJsonCtrl = TextEditingController();
   final _examTypeCtrl = TextEditingController();
@@ -34,6 +35,8 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
   String? _topicId;
   String _correctOption = 'A';
   String _difficulty = 'medium';
+  String _writtenFormat = 'written';
+  List<_WrittenDraft> _writtenDrafts = [_WrittenDraft()];
   final List<String> _previousYears = [];
   bool _saving = false;
   String? _error;
@@ -59,6 +62,10 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
     _cCtrl.dispose();
     _dCtrl.dispose();
     _explanationCtrl.dispose();
+    _stimulusCtrl.dispose();
+    for (final draft in _writtenDrafts) {
+      draft.dispose();
+    }
     _tagCtrl.dispose();
     _bulkJsonCtrl.dispose();
     _examTypeCtrl.dispose();
@@ -90,6 +97,11 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
       }
     }
     walk(widget.topics, 0);
+    final selectedTopic = flatTopics
+      .where((row) => row.node.id == _topicId)
+      .firstOrNull
+      ?.node;
+    final isWritten = selectedTopic?.questionType == 'written';
 
     return Center(
       child: ConstrainedBox(
@@ -103,9 +115,9 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'নতুন MCQ প্রশ্ন যোগ করুন',
-                      style: TextStyle(
+                    Text(
+                      'নতুন ${isWritten ? 'Written' : 'MCQ'} প্রশ্ন যোগ করুন',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -189,32 +201,122 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _textCtrl,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'প্রশ্নের বর্ণনা',
-                        hintText: 'প্রশ্নটি এখানে লিখুন...',
+                    if (isWritten) ...[
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: 'written', label: Text('Written')),
+                          ButtonSegment(value: 'cq', label: Text('CQ')),
+                        ],
+                        selected: {_writtenFormat},
+                        onSelectionChanged: (value) => setState(() => _writtenFormat = value.first),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    for (final (i, label) in _bengaliLabels.indexed)
-                      OptionField(
-                        label: label,
-                        controller: _optionCtrl(i),
-                        isSelected: _correctOption == _optionKeys[i],
-                        onPick: () =>
-                            setState(() => _correctOption = _optionKeys[i]),
+                      if (_writtenFormat == 'cq') ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _stimulusCtrl,
+                          minLines: 3,
+                          maxLines: 6,
+                          decoration: const InputDecoration(
+                            labelText: 'উদ্দীপক',
+                            hintText: 'CQ-এর উদ্দীপক লিখুন...',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      for (final (index, draft) in _writtenDrafts.indexed)
+                        Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'প্রশ্ন ${index + 1}',
+                                        style: const TextStyle(fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    if (_writtenDrafts.length > 1)
+                                      IconButton(
+                                        tooltip: 'প্রশ্ন সরান',
+                                        onPressed: () => setState(() {
+                                          _writtenDrafts.removeAt(index).dispose();
+                                        }),
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                      ),
+                                  ],
+                                ),
+                                TextField(
+                                  controller: draft.question,
+                                  minLines: 2,
+                                  maxLines: 4,
+                                  decoration: InputDecoration(
+                                    labelText: _writtenFormat == 'cq'
+                                        ? 'প্রশ্ন ${index + 1} (যেমন: ক, খ, গ, ঘ)'
+                                        : 'প্রশ্ন',
+                                    alignLabelWithHint: true,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                TextField(
+                                  controller: draft.answer,
+                                  minLines: 2,
+                                  maxLines: 4,
+                                  decoration: const InputDecoration(
+                                    labelText: 'উত্তর / নমুনা উত্তর',
+                                    alignLabelWithHint: true,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: 140,
+                                  child: TextField(
+                                    controller: draft.marks,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: const InputDecoration(labelText: 'পূর্ণ নম্বর'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _writtenDrafts.add(_WrittenDraft())),
+                        icon: const Icon(Icons.add),
+                        label: const Text('আরেকটি প্রশ্ন যোগ করুন'),
                       ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _explanationCtrl,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'ব্যাখ্যা (Explanation)',
-                        hintText: 'সঠিক উত্তরের বিস্তারিত ব্যাখ্যা...',
+                    ] else ...[
+                      TextField(
+                        controller: _textCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'প্রশ্নের বর্ণনা',
+                          hintText: 'প্রশ্নটি এখানে লিখুন...',
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
+                      for (final (i, label) in _bengaliLabels.indexed)
+                        OptionField(
+                          label: label,
+                          controller: _optionCtrl(i),
+                          isSelected: _correctOption == _optionKeys[i],
+                          onPick: () => setState(() => _correctOption = _optionKeys[i]),
+                        ),
+                    ],
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _explanationCtrl,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'ব্যাখ্যা (Explanation)',
+                          hintText: 'সঠিক উত্তরের বিস্তারিত ব্যাখ্যা...',
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -240,9 +342,11 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
                       controller: _bulkJsonCtrl,
                       minLines: 4,
                       maxLines: 8,
-                      decoration: const InputDecoration(
-                        hintText:
-                            '[{"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"A","explanation":"..."}]',
+                      decoration: InputDecoration(
+                        labelText: isWritten ? 'Written / CQ JSON' : 'MCQ JSON',
+                        hintText: isWritten
+                            ? '{"format":"cq","stimulus":"...","questions":[{"question_text":"...","model_answer":"...","marks":5}]}'
+                            : '[{"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_option":"A"}]',
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -298,12 +402,25 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
   }
 
   Future<void> _save() async {
-    final text = _textCtrl.text.trim();
-    if (_topicId == null || text.isEmpty) {
+    if (_topicId == null) {
       setState(() {
-        _error = 'বিষয় ও প্রশ্নের বর্ণনা পূরণ করুন';
+        _error = 'বিষয় নির্বাচন করুন';
         _success = null;
       });
+      return;
+    }
+    final topic = widget.topics.expand(_flattenTopics).firstWhere((item) => item.id == _topicId);
+    if (topic.questionType == 'written') {
+      final invalid = _writtenDrafts.any((draft) =>
+          draft.question.text.trim().isEmpty ||
+          double.tryParse(draft.marks.text.trim()) == null ||
+          double.parse(draft.marks.text.trim()) <= 0);
+      if (invalid || (_writtenFormat == 'cq' && _stimulusCtrl.text.trim().isEmpty)) {
+        setState(() => _error = 'উদ্দীপক, প্রতিটি প্রশ্ন এবং সঠিক পূর্ণ নম্বর দিন');
+        return;
+      }
+    } else if (_textCtrl.text.trim().isEmpty) {
+      setState(() => _error = 'প্রশ্নের বর্ণনা পূরণ করুন');
       return;
     }
     setState(() {
@@ -312,21 +429,36 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
       _success = null;
     });
     try {
-      await QuestionService(apiClient).create({
-        'topic_id': _topicId,
-        'question_text': text,
-        'option_a': _aCtrl.text.trim(),
-        'option_b': _bCtrl.text.trim(),
-        'option_c': _cCtrl.text.trim(),
-        'option_d': _dCtrl.text.trim(),
-        'correct_option': _correctOption,
-        'explanation': _explanationCtrl.text.trim(),
-        'previous_years': _previousYears,
-        'difficulty_level': _difficulty,
-        'exam_type': _examTypeCtrl.text.trim(),
-        'question_set': _questionSetCtrl.text.trim(),
-        'source': _sourceCtrl.text.trim(),
-      });
+      if (topic.questionType == 'written') {
+        await _createWrittenSet(
+          format: _writtenFormat,
+          stimulus: _stimulusCtrl.text.trim(),
+          questions: [
+            for (final draft in _writtenDrafts)
+              {
+                'question_text': draft.question.text.trim(),
+                'model_answer': draft.answer.text.trim(),
+                'marks': double.parse(draft.marks.text.trim()),
+              },
+          ],
+        );
+      } else {
+        await QuestionService(apiClient).create({
+          'topic_id': _topicId,
+          'question_text': _textCtrl.text.trim(),
+          'option_a': _aCtrl.text.trim(),
+          'option_b': _bCtrl.text.trim(),
+          'option_c': _cCtrl.text.trim(),
+          'option_d': _dCtrl.text.trim(),
+          'correct_option': _correctOption,
+          'explanation': _explanationCtrl.text.trim(),
+          'previous_years': _previousYears,
+          'difficulty_level': _difficulty,
+          'exam_type': _examTypeCtrl.text.trim(),
+          'question_set': _questionSetCtrl.text.trim(),
+          'source': _sourceCtrl.text.trim(),
+        });
+      }
       setState(() {
         _success = 'প্রশ্ন সফলভাবে সংরক্ষিত হয়েছে';
         _textCtrl.clear();
@@ -335,6 +467,11 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
         _cCtrl.clear();
         _dCtrl.clear();
         _explanationCtrl.clear();
+        _stimulusCtrl.clear();
+        for (final draft in _writtenDrafts) {
+          draft.dispose();
+        }
+        _writtenDrafts = [_WrittenDraft()];
         _previousYears.clear();
       });
     } catch (e) {
@@ -342,6 +479,36 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
     } finally {
       setState(() => _saving = false);
     }
+  }
+
+  Iterable<TopicNode> _flattenTopics(TopicNode node) sync* {
+    yield node;
+    for (final child in node.children) {
+      yield* _flattenTopics(child);
+    }
+  }
+
+  Future<void> _createWrittenSet({
+    required String format,
+    required String stimulus,
+    required List<Map<String, dynamic>> questions,
+    String? title,
+    String? examType,
+    String? questionSet,
+    List<String>? previousYears,
+  }) async {
+    await WrittenQuestionService(apiClient).createSet(
+      topicId: _topicId!,
+      format: format,
+      title: title ?? _questionSetCtrl.text.trim(),
+      stimulus: stimulus,
+      examType: examType ?? _examTypeCtrl.text.trim(),
+      questionSet: questionSet ?? _questionSetCtrl.text.trim(),
+      previousYears: previousYears ?? _previousYears,
+      difficultyLevel: _difficulty,
+      source: _sourceCtrl.text.trim().isEmpty ? 'admin' : _sourceCtrl.text.trim(),
+      questions: questions,
+    );
   }
 
   Future<void> _bulkImport() async {
@@ -355,18 +522,61 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
       }
       try {
         final decoded = jsonDecode(_bulkJsonCtrl.text);
-        final payload = decoded is Map
-            ? Map<String, dynamic>.from(decoded)
-            : <String, dynamic>{'questions': decoded};
-        final rawQuestions = payload['questions'];
-        if (rawQuestions is! List) {
-          throw const FormatException('questions array দিন');
-        }
         setState(() {
           _saving = true;
           _error = null;
           _success = null;
         });
+        final topic = widget.topics.expand(_flattenTopics).firstWhere((item) => item.id == _topicId);
+        if (topic.questionType == 'written') {
+          final rawSets = decoded is Map && decoded['sets'] is List
+              ? decoded['sets'] as List
+              : decoded is List
+                  ? decoded
+                  : [decoded];
+          var questionCount = 0;
+          for (final rawSet in rawSets) {
+            if (rawSet is! Map) throw const FormatException('প্রতিটি set JSON object হতে হবে');
+            final set = Map<String, dynamic>.from(rawSet);
+            final rawQuestions = set['questions'] is List
+                ? set['questions'] as List
+                : set.containsKey('question_text')
+                    ? [set]
+                    : const [];
+            if (rawQuestions.isEmpty) throw const FormatException('প্রতিটি set-এ questions array দিন');
+            final questions = rawQuestions.map((raw) {
+              if (raw is! Map) throw const FormatException('প্রতিটি প্রশ্ন JSON object হতে হবে');
+              return Map<String, dynamic>.from(raw);
+            }).toList();
+            await WrittenQuestionService(apiClient).createSet(
+              topicId: _topicId!,
+              format: (set['format'] ?? 'written').toString(),
+              title: (set['title'] ?? set['question_set'] ?? _questionSetCtrl.text).toString(),
+              stimulus: (set['stimulus'] ?? '').toString(),
+              examType: (set['exam_type'] ?? _examTypeCtrl.text).toString(),
+              questionSet: (set['question_set'] ?? _questionSetCtrl.text).toString(),
+              previousYears: (set['previous_years'] as List<dynamic>? ?? _previousYears)
+                  .map((year) => year.toString())
+                  .toList(),
+              difficultyLevel: (set['difficulty_level'] ?? _difficulty).toString(),
+              source: (set['source'] ?? _sourceCtrl.text).toString(),
+              questions: questions,
+            );
+            questionCount += questions.length;
+          }
+          if (mounted) {
+            setState(() {
+              _bulkJsonCtrl.clear();
+              _success = '$questionCountটি Written প্রশ্ন upload হয়েছে';
+            });
+          }
+          return;
+        }
+        final payload = decoded is Map
+            ? Map<String, dynamic>.from(decoded)
+            : <String, dynamic>{'questions': decoded};
+        final rawQuestions = payload['questions'];
+        if (rawQuestions is! List) throw const FormatException('questions array দিন');
         final items = <Map<String, dynamic>>[];
         for (final item in rawQuestions) {
           if (item is! Map) {
@@ -397,5 +607,17 @@ class _AdminQuestionFormState extends ConsumerState<AdminQuestionForm> {
       } finally {
         if (mounted) setState(() => _saving = false);
     }
+  }
+}
+
+class _WrittenDraft {
+  final question = TextEditingController();
+  final answer = TextEditingController();
+  final marks = TextEditingController(text: '10');
+
+  void dispose() {
+    question.dispose();
+    answer.dispose();
+    marks.dispose();
   }
 }

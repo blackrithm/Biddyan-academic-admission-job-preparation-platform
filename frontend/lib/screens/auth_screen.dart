@@ -10,13 +10,15 @@ import '../providers/providers.dart';
 /// On mobile the card fills the screen; on wide web canvases the brand hero
 /// and login card are laid out in a centered column.
 class AuthScreen extends ConsumerWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.redirectTo});
+
+  final String? redirectTo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<AuthState>(authNotifierProvider, (_, next) {
       if (next.user != null && context.mounted) {
-        context.go('/');
+        context.go(redirectTo ?? '/');
       }
     });
     final authState = ref.watch(authNotifierProvider);
@@ -40,7 +42,7 @@ class AuthScreen extends ConsumerWidget {
                       fit: BoxFit.contain,
                     ),
                     const Text(
-                      'বিদ্বান',
+                      '',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 20,
@@ -52,7 +54,7 @@ class AuthScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'BCS, ব্যাংক ও চাকরির পরীক্ষার আধুনিক প্রস্তুতি',
+                  'একাডেমিক, এডমিশন, BCS, ব্যাংক ও চাকরির পরীক্ষার আধুনিক প্রস্তুতি',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,

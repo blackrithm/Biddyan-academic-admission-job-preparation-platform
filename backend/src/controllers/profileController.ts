@@ -4,6 +4,54 @@ import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export class ProfileController {
+  static async getRecentActivity(req: Request, res: Response) {
+    try {
+      const userId = (req as AuthenticatedRequest).auth!.userId;
+      const result = await pool.query(
+        `SELECT * FROM (
+           SELECT 'exam' AS activity_type,
+                  a.id::text AS activity_id,
+                  e.id::text AS related_id,
+                  e.title,
+                  a.submitted_at AS activity_at,
+                  a.correct_count,
+                  a.wrong_count,
+                  e.total_marks,
+                  e.is_live,
+                  NULL::int AS question_count
+           FROM user_exam_attempts a
+           JOIN exams e ON e.id = a.exam_id
+           WHERE a.user_id = $1
+
+           UNION ALL
+
+           SELECT 'topic' AS activity_type,
+                  CONCAT('topic-', t.id)::text AS activity_id,
+                  t.id::text AS related_id,
+                  t.name AS title,
+                  MAX(a.submitted_at) AS activity_at,
+                  NULL::int AS correct_count,
+                  NULL::int AS wrong_count,
+                  NULL::numeric AS total_marks,
+                  NULL::boolean AS is_live,
+                  COUNT(DISTINCT ua.question_id)::int AS question_count
+           FROM user_exam_attempts a
+           JOIN user_answers ua ON ua.attempt_id = a.id
+           JOIN questions q ON q.id = ua.question_id
+           JOIN topics t ON t.id = q.topic_id
+           WHERE a.user_id = $1
+           GROUP BY t.id, t.name
+         ) activity
+         ORDER BY activity_at DESC
+         LIMIT 6`,
+        [userId],
+      );
+      return res.status(200).json(result.rows);
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   static async getStats(req: Request, res: Response) {
     try {
       const userId = (req as AuthenticatedRequest).auth!.userId;

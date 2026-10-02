@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 import '../widgets/interactive_question_card.dart';
 
 class QuestionBankSetsScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
   Future<_QuestionBankPageData> _load() async {
     final topics = await TopicService(apiClient).getTree();
     final questions = await QuestionService(apiClient).list();
+    final writtenQuestions = await WrittenQuestionService(apiClient).list();
     final exams = await ExamService(apiClient).list();
     final topicIds = <String>{};
     final target = _alias(widget.category).toLowerCase();
@@ -54,7 +56,14 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
       return topicIds.contains(question.topicId) ||
           question.topicName?.toLowerCase() == categoryName;
     }).toList();
-    return _QuestionBankPageData(questions: filtered, exams: exams);
+    final filteredWritten = writtenQuestions
+        .where((question) => topicIds.contains(question.topicId))
+        .toList();
+    return _QuestionBankPageData(
+      questions: filtered,
+      writtenQuestions: filteredWritten,
+      exams: exams,
+    );
   }
 
   String _alias(String category) {
@@ -69,13 +78,8 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(
-        title: Text('${widget.category} Question Bank'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: FutureBuilder<_QuestionBankPageData>(
         future: _data,
         builder: (context, snapshot) {
@@ -83,6 +87,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           final questions = snapshot.data?.questions ?? const <Question>[];
+          final writtenQuestions = snapshot.data?.writtenQuestions ?? const <WrittenQuestion>[];
           final exams = snapshot.data?.exams ?? const <Exam>[];
           final sets = <String, List<Question>>{};
           for (final question in questions) {
@@ -91,10 +96,23 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
               sets.putIfAbsent(name, () => []).add(question);
             }
           }
+          final writtenSets = <String, List<WrittenQuestion>>{};
+          for (final question in writtenQuestions) {
+            final key = question.setId ??
+                'legacy:${question.topicId}:${question.questionSet ?? question.id}';
+            writtenSets.putIfAbsent(key, () => []).add(question);
+          }
           final query = _search.trim().toLowerCase();
           final visibleSets = sets.entries
               .where((entry) => entry.key.toLowerCase().contains(query))
               .toList();
+          final visibleWrittenSets = writtenSets.entries.where((entry) {
+            final question = entry.value.first;
+            final title = question.setTitle.isNotEmpty
+                ? question.setTitle
+                : question.questionSet ?? 'Written set';
+            return title.toLowerCase().contains(query);
+          }).toList();
           return ListView(
             padding: const EdgeInsets.fromLTRB(0, 14, 0, 24),
             children: [
@@ -130,87 +148,82 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('${visibleSets.length}টি question set পাওয়া গেছে',
+                    Text('${visibleSets.length + visibleWrittenSets.length}টি question set পাওয়া গেছে',
                         style: const TextStyle(color: AppConstants.mutedText)),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              if (visibleSets.isEmpty)
+              if (visibleSets.isEmpty && visibleWrittenSets.isEmpty)
                 const Card(
                   child: Padding(
                     padding: EdgeInsets.all(18),
                     child: Text('এই category-তে কোনো question set পাওয়া যায়নি।'),
                   ),
-                )
-              else
-                for (final entry in visibleSets)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(entry.key,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 5),
-                          Text('প্রশ্ন ব্যাংক: ${entry.value.length}টি প্রশ্ন',
-                              style: const TextStyle(color: AppConstants.mutedText)),
-                          if (_examForSet(exams, entry.key) case final exam?)
-                            Text(
-                              'মোট ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ভুল উত্তরে ${exam.negativeMarking} কাটা যাবে',
-                              style: const TextStyle(color: AppConstants.mutedText),
-                            ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: 44,
-                                  child: FilledButton(
-                                    onPressed: () => _openSet(context, entry.key, entry.value),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFFDCD9FF),
-                                      foregroundColor: const Color(0xFF202938),
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                    child: const Text('Read Question'),
-                                  ),
+                ),
+              for (final entry in visibleSets)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(entry.key, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 5),
+                        Text('প্রশ্ন ব্যাংক: ${entry.value.length}টি প্রশ্ন', style: const TextStyle(color: AppConstants.mutedText)),
+                        if (_examForSet(exams, entry.key) case final exam?)
+                          Text(
+                            'মোট ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ভুল উত্তরে ${exam.negativeMarking} কাটা যাবে',
+                            style: const TextStyle(color: AppConstants.mutedText),
+                          ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 44,
+                                child: FilledButton(
+                                  onPressed: () => _openSet(context, entry.key, entry.value),
+                                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDCD9FF), foregroundColor: const Color(0xFF202938), elevation: 0),
+                                  child: const Text('Read Question'),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: SizedBox(
-                                  height: 44,
-                                  child: FilledButton(
-                                    onPressed: () => _startExam(
-                                      context,
-                                      entry.key,
-                                      entry.value,
-                                    ),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFFE2E7EF),
-                                      foregroundColor: const Color(0xFF202938),
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                    child: const Text('Start Exam'),
-                                  ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SizedBox(
+                                height: 44,
+                                child: FilledButton(
+                                  onPressed: () => _startExam(context, entry.key, entry.value),
+                                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE2E7EF), foregroundColor: const Color(0xFF202938), elevation: 0),
+                                  child: const Text('Start Exam'),
                                 ),
                               ),
-                            ],
                             ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
+                ),
+              if (visibleWrittenSets.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  child: Text('Written Question Sets', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                ),
+                for (final entry in visibleWrittenSets)
+                  _WrittenSetCard(
+                    questions: entry.value,
+                    title: entry.value.first.setTitle.isNotEmpty
+                        ? entry.value.first.setTitle
+                        : entry.value.first.questionSet ?? 'Written set',
+                    onRead: () => _openWrittenSet(context, entry.value, examMode: false),
+                    onExam: () => _openWrittenSet(context, entry.value, examMode: true),
+                  ),
+              ],
             ],
           );
         },
@@ -228,6 +241,21 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
         builder: (_) => _QuestionSetReaderPage(name: name, questions: questions),
       ),
     );
+  }
+
+  void _openWrittenSet(
+    BuildContext context,
+    List<WrittenQuestion> questions, {
+    required bool examMode,
+  }) {
+    final first = questions.first;
+    final query = <String, String>{
+      'topicId': first.topicId,
+      'topicName': first.setTitle.isNotEmpty ? first.setTitle : first.topicName ?? 'Written প্রশ্ন',
+      if (first.setId != null) 'setId': first.setId!,
+      if (examMode) 'mode': 'exam',
+    };
+    context.push('/written-practice?${Uri(queryParameters: query).query}');
   }
 
   Future<void> _startExam(
@@ -296,9 +324,55 @@ class _QuestionSetReaderPage extends StatelessWidget {
 }
 
 class _QuestionBankPageData {
-  const _QuestionBankPageData({required this.questions, required this.exams});
+  const _QuestionBankPageData({
+    required this.questions,
+    required this.writtenQuestions,
+    required this.exams,
+  });
 
   final List<Question> questions;
+  final List<WrittenQuestion> writtenQuestions;
   final List<Exam> exams;
+}
+
+class _WrittenSetCard extends StatelessWidget {
+  const _WrittenSetCard({
+    required this.questions,
+    required this.title,
+    required this.onRead,
+    required this.onExam,
+  });
+
+  final List<WrittenQuestion> questions;
+  final String title;
+  final VoidCallback onRead;
+  final VoidCallback onExam;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const SizedBox(height: 4),
+              Text(
+                '${questions.first.format == 'cq' ? 'CQ' : 'Written'} • ${questions.length}টি প্রশ্ন • ${questions.fold<double>(0, (sum, question) => sum + question.marks).toStringAsFixed(0)} নম্বর',
+                style: const TextStyle(color: AppConstants.mutedText),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: OutlinedButton.icon(onPressed: onRead, icon: const Icon(Icons.menu_book_outlined), label: const Text('পড়ুন'))),
+                  const SizedBox(width: 8),
+                  Expanded(child: FilledButton.icon(onPressed: onExam, icon: const Icon(Icons.edit_note), label: const Text('Written exam'))),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
 }
 

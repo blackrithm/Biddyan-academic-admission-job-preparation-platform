@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/constants.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 
 class SubjectCatalogScreen extends ConsumerStatefulWidget {
-  const SubjectCatalogScreen({super.key, this.categoryName});
+  const SubjectCatalogScreen({super.key, this.categoryName, this.createExam = false});
 
   final String? categoryName;
+  final bool createExam;
 
   @override
   ConsumerState<SubjectCatalogScreen> createState() =>
@@ -41,6 +45,7 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
   Future<_CatalogData> _loadCatalog() async {
     final topics = await TopicService(apiClient).getTree();
     final questions = await QuestionService(apiClient).list();
+    final writtenQuestions = await WrittenQuestionService(apiClient).list();
     final requestedCategory = _canonicalCategory(widget.categoryName);
 
     TopicNode? findCategory(List<TopicNode> nodes) {
@@ -62,6 +67,7 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
         categories: topics,
         topics: topics,
         questions: questions,
+        writtenQuestions: writtenQuestions,
       );
     }
 
@@ -84,6 +90,9 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
             categoryIds.contains(question.topicId) ||
             question.topicName?.toLowerCase() == categoryName)
           .toList(),
+      writtenQuestions: writtenQuestions
+          .where((question) => categoryIds.contains(question.topicId))
+          .toList(),
     );
   }
 
@@ -105,7 +114,8 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(title: const Text('বিষয়সমূহ')),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: ListView(
         children: [
           FutureBuilder<_CatalogData>(
@@ -152,6 +162,8 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
                       _TopicBrowser(
                         roots: filtered,
                         questions: snapshot.data!.questions,
+                        writtenQuestions: snapshot.data!.writtenQuestions,
+                        autoOpenCreate: widget.createExam,
                       ),
                       if (filtered.isEmpty)
                         const Padding(
@@ -175,6 +187,28 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
   }
 }
 
+class _DialogFieldCaption extends StatelessWidget {
+  const _DialogFieldCaption(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppConstants.mutedText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+}
+
 /// Loaded catalog payload: the topics that have at least one MCQ plus the
 /// full question list used to compute per-subject question counts.
 class _CatalogData {
@@ -183,15 +217,17 @@ class _CatalogData {
     required this.categories,
     required this.topics,
     required this.questions,
+    required this.writtenQuestions,
   });
 
   final TopicNode? category;
   final List<TopicNode> categories;
   final List<TopicNode> topics;
   final List<Question> questions;
+  final List<WrittenQuestion> writtenQuestions;
 }
 
-class _CategoryTabs extends StatelessWidget {
+class _CategoryTabs extends StatefulWidget {
   const _CategoryTabs({
     required this.categories,
     required this.activeCategory,
@@ -199,6 +235,14 @@ class _CategoryTabs extends StatelessWidget {
 
   final List<TopicNode> categories;
   final String? activeCategory;
+
+  @override
+  State<_CategoryTabs> createState() => _CategoryTabsState();
+}
+
+class _CategoryTabsState extends State<_CategoryTabs> {
+  final _scrollController = ScrollController();
+  double _scrollOffset = 0;
 
   static const _fallbackCategories = [
     'SSC',
@@ -211,47 +255,104 @@ class _CategoryTabs extends StatelessWidget {
   ];
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final names = <String>{
       ..._fallbackCategories,
-      for (final category in _flatten(categories))
+      for (final category in _flatten(widget.categories))
         if (_fallbackCategories.any(
           (name) => name.toLowerCase() == category.name.toLowerCase(),
         ))
           category.name,
     }.toList();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Row(
-        children: [
-          for (final name in names)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(name),
-                selected: name.toLowerCase() ==
-                    (activeCategory ?? '').toLowerCase(),
-                selectedColor: const Color(0xFFD6EEF3),
-                backgroundColor: const Color(0xFFF4F7F8),
-                side: const BorderSide(color: Color(0xFFD9E4E8)),
-                showCheckmark: true,
-                checkmarkColor: AppConstants.primary,
-                labelStyle: const TextStyle(
-                  color: Color(0xFF26363A),
-                  fontWeight: FontWeight.w500,
-                ),
-                onSelected: (selected) {
-                  if (!selected) return;
-                  context.go(
-                    '/subject-catalog?category=${Uri.encodeComponent(name)}',
-                  );
-                },
-              ),
+    final dotCount = (names.length / 4).ceil().clamp(1, 4);
+    final activeDot = _scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent > 0
+        ? ((_scrollOffset / _scrollController.position.maxScrollExtent) *
+                (dotCount - 1))
+            .round()
+        : 0;
+
+    return Column(
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              setState(() => _scrollOffset = notification.metrics.pixels);
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              children: [
+                for (final name in names)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(name),
+                      selected: name.toLowerCase() ==
+                          (widget.activeCategory ?? '').toLowerCase(),
+                      selectedColor: const Color(0xFFD6EEF3),
+                      backgroundColor: const Color(0xFFF4F7F8),
+                      side: const BorderSide(color: Color(0xFFD9E4E8)),
+                      showCheckmark: true,
+                      checkmarkColor: AppConstants.primary,
+                      labelStyle: const TextStyle(
+                        color: Color(0xFF26363A),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      onSelected: (selected) {
+                        if (!selected) return;
+                        context.go(
+                          '/subject-catalog?category=${Uri.encodeComponent(name)}',
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var index = 0; index < dotCount; index++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: index == activeDot ? 16 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: index == activeDot
+                      ? AppConstants.primary
+                      : const Color(0xFFB7C7CB),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+          ],
+        ),
+        if (_scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent > 0)
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.swipe,
+              size: 14,
+              color: Color(0xFF8A9A9E),
+            ),
+          ),
+      ],
     );
   }
 
@@ -638,10 +739,17 @@ class _QuestionBankListCardState extends State<_QuestionBankListCard> {
 }
 
 class _TopicBrowser extends StatefulWidget {
-  const _TopicBrowser({required this.roots, required this.questions});
+  const _TopicBrowser({
+    required this.roots,
+    required this.questions,
+    required this.writtenQuestions,
+    this.autoOpenCreate = false,
+  });
 
   final List<TopicNode> roots;
   final List<Question> questions;
+  final List<WrittenQuestion> writtenQuestions;
+  final bool autoOpenCreate;
 
   @override
   State<_TopicBrowser> createState() => _TopicBrowserState();
@@ -650,6 +758,7 @@ class _TopicBrowser extends StatefulWidget {
 class _TopicBrowserState extends State<_TopicBrowser> {
   late List<TopicNode> _level;
   final _history = <({String title, List<TopicNode> level})>[];
+  bool _autoOpened = false;
 
   @override
   void initState() {
@@ -659,6 +768,12 @@ class _TopicBrowserState extends State<_TopicBrowser> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.autoOpenCreate && !_autoOpened && _level.isNotEmpty) {
+      _autoOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showCreateExamDialog(_level.first);
+      });
+    }
     final title = _history.isEmpty ? 'বিষয়সমূহ' : _history.last.title;
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
@@ -682,7 +797,13 @@ class _TopicBrowserState extends State<_TopicBrowser> {
               hasChildren: topic.children.isNotEmpty,
               onOpen: () => _openTopic(topic),
               onAllQuestions: () => _openPractice(topic),
-              onRandomExam: () => _showRandomExamDialog(topic),
+              onRandomExam: () {
+                if (topic.questionType == 'written') {
+                  _openWrittenExam(topic);
+                } else {
+                  _showCreateExamDialog(topic);
+                }
+              },
             ),
           if (_level.isEmpty)
             const Card(
@@ -698,6 +819,9 @@ class _TopicBrowserState extends State<_TopicBrowser> {
 
   int _questionCount(TopicNode topic) {
     final ids = _descendantIds(topic);
+    if (topic.questionType == 'written') {
+      return widget.writtenQuestions.where((question) => ids.contains(question.topicId)).length;
+    }
     return widget.questions.where((question) => ids.contains(question.topicId)).length;
   }
 
@@ -727,71 +851,287 @@ class _TopicBrowserState extends State<_TopicBrowser> {
   }
 
   void _openPractice(TopicNode topic) {
+    if (topic.questionType == 'written') {
+      context.push(
+        '/written-practice?topicId=${Uri.encodeComponent(topic.id)}&topicName=${Uri.encodeComponent(topic.name)}',
+      );
+      return;
+    }
     context.push(
       '/subject-practice?topicId=${Uri.encodeComponent(topic.id)}&topicName=${Uri.encodeComponent(topic.name)}&mode=all',
     );
   }
 
-  Future<void> _showRandomExamDialog(TopicNode topic) async {
-    final available = _questionCount(topic);
-    final questionOptions = <int>{
-      ...[5, 10, 20, 30, 50].where((value) => value <= available),
-      available.clamp(1, 50),
-    }.toList()..sort();
-    var questionCount = questionOptions.last;
-    var duration = 10;
-    final result = await showDialog<({int count, int duration})>(
+  void _openWrittenExam(TopicNode topic) {
+    context.push(
+      '/written-practice?topicId=${Uri.encodeComponent(topic.id)}&topicName=${Uri.encodeComponent(topic.name)}&mode=exam',
+    );
+  }
+
+  Future<void> _showCreateExamDialog(TopicNode initialTopic) async {
+    final topics = _flatten(widget.roots)
+        .where((topic) => _questionCount(topic) > 0)
+        .toList();
+    final selectedCounts = <String, int>{
+      initialTopic.id: _questionCount(initialTopic).clamp(1, 10),
+    };
+    final passController = TextEditingController();
+    final perQuestionMarkController = TextEditingController(text: '1');
+    final negativeController = TextEditingController(text: '0.25');
+    final durationController = TextEditingController(text: '30');
+    final titleController = TextEditingController(text: 'Custom Practice Exam');
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('${topic.name} - Random Exam'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<int>(
-                value: questionCount,
-                decoration: const InputDecoration(labelText: 'কতটি প্রশ্ন?'),
-                items: [
-                  for (final count in questionOptions)
-                    DropdownMenuItem(value: count, child: Text('$countটি প্রশ্ন')),
+          title: const Text('Create Custom Exam'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _DialogFieldCaption('Exam title'),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      hintText: 'Custom Practice Exam',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Topics ও question count', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(height: 6),
+                  for (final topic in topics)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            value: selectedCounts.containsKey(topic.id),
+                            onChanged: (selected) => setDialogState(() {
+                              if (selected == true) {
+                                selectedCounts[topic.id] = _questionCount(topic).clamp(1, 50);
+                              } else {
+                                selectedCounts.remove(topic.id);
+                              }
+                            }),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(topic.name),
+                                Text('${_questionCount(topic)}টি প্রশ্ন available'),
+                              ],
+                            ),
+                          ),
+                          if (selectedCounts.containsKey(topic.id)) ...[
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 84,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      'Qty',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: AppConstants.mutedText,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  TextFormField(
+                                    initialValue: '${selectedCounts[topic.id]}',
+                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                    ),
+                                    onChanged: (value) {
+                                      final count = int.tryParse(value);
+                                      if (count != null && count > 0) selectedCounts[topic.id] = count;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  const Divider(),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 360 ? 2 : 1;
+                      final gap = 12.0;
+                      final fieldWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+                      Widget numberField(
+                        String label,
+                        TextEditingController controller,
+                        String hint, {
+                        bool decimal = true,
+                      }) => SizedBox(
+                            width: fieldWidth,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _DialogFieldCaption(label),
+                                TextField(
+                                  controller: controller,
+                                  keyboardType: decimal
+                                      ? const TextInputType.numberWithOptions(decimal: true)
+                                      : TextInputType.number,
+                                  decoration: InputDecoration(
+                                    hintText: hint,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                      return Wrap(
+                        spacing: gap,
+                        runSpacing: 12,
+                        children: [
+                          numberField('Pass mark', passController, 'Auto · 40%'),
+                          numberField('Per question mark', perQuestionMarkController, '1.0'),
+                          numberField('Negative mark', negativeController, '0.25'),
+                          numberField('Minutes', durationController, '30', decimal: false),
+                        ],
+                      );
+                    },
+                  ),
                 ],
-                onChanged: (value) => setDialogState(() => questionCount = value ?? questionCount),
               ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<int>(
-                value: duration,
-                decoration: const InputDecoration(labelText: 'সময়'),
-                items: const [5, 10, 15, 20, 30]
-                    .map((value) => DropdownMenuItem(value: value, child: Text('$value মিনিট')))
-                    .toList(),
-                onChanged: (value) => setDialogState(() => duration = value ?? duration),
-              ),
-            ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('বাতিল')),
             FilledButton(
-              onPressed: () => Navigator.pop(context, (count: questionCount, duration: duration)),
-              child: const Text('পরীক্ষা শুরু'),
+              onPressed: selectedCounts.isEmpty
+                  ? null
+                  : () {
+                      final perQuestionMark = double.tryParse(perQuestionMarkController.text) ?? 1;
+                      Navigator.pop(context, {
+                      'topicQuestions': [
+                        for (final entry in selectedCounts.entries)
+                          {'topicId': entry.key, 'questionCount': entry.value},
+                      ],
+                      'perQuestionMark': perQuestionMark,
+                      'passMark': double.tryParse(passController.text),
+                      'negativeMarking': double.tryParse(negativeController.text) ?? 0.25,
+                      'durationMinutes': int.tryParse(durationController.text) ?? 30,
+                      'title': titleController.text.trim().isEmpty ? 'Custom Practice Exam' : titleController.text.trim(),
+                      });
+                    },
+              child: const Text('Create Exam'),
             ),
           ],
         ),
       ),
     );
+    passController.dispose();
+    negativeController.dispose();
+    durationController.dispose();
+    titleController.dispose();
     if (result == null || !mounted) return;
     try {
-      final exam = await ExamService(apiClient).generateDynamic(
-        topicId: topic.id,
-        questionCount: result.count,
-        durationMinutes: result.duration,
-        title: '${topic.name} Random Exam',
+      final exam = await ExamService(apiClient).generateDynamicMulti(
+        topicQuestions: (result['topicQuestions'] as List<dynamic>)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(),
+        perQuestionMark: result['perQuestionMark'] as double,
+        passMark: result['passMark'] as double?,
+        negativeMarking: result['negativeMarking'] as double,
+        durationMinutes: result['durationMinutes'] as int,
+        title: result['title'] as String,
       );
-      if (mounted) context.push('/exam/${exam.id}');
+      if (mounted) await _showCreatedExamDialog(exam);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('পরীক্ষা তৈরি করা যায়নি: $error')));
       }
+
     }
+  perQuestionMarkController.dispose();
+  }
+
+  Iterable<TopicNode> _flatten(List<TopicNode> nodes) sync* {
+    for (final node in nodes) {
+      yield node;
+      yield* _flatten(node.children);
+    }
+  }
+
+  Future<void> _showCreatedExamDialog(Exam exam) async {
+    final shareUrl = '${Uri.base.origin}/#/exam/${exam.id}';
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Exam তৈরি হয়েছে'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('এই link share করলে অন্যরা সরাসরি exam দিতে পারবে:'),
+            const SizedBox(height: 10),
+            SelectableText(shareUrl, style: const TextStyle(fontSize: 12, color: AppConstants.primary)),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              final shareUri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent('${exam.title}\\n$shareUrl')}');
+              await launchUrl(shareUri, mode: LaunchMode.externalApplication);
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('Share'),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: shareUrl));
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exam link copied')));
+            },
+            icon: const Icon(Icons.copy_outlined),
+            label: const Text('Copy link'),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/exam/${exam.id}/participants');
+            },
+            child: const Text('Participants & rank'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/exam/${exam.id}');
+            },
+            child: const Text('Start Exam'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -874,7 +1214,7 @@ class _TopicActionCard extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    'Subtopics: ${topic.children.length}\nQuestions: $questionCount',
+                    'Subtopics: ${topic.children.length}\n${topic.questionType == 'written' ? 'Written questions' : 'Questions'}: $questionCount',
                     style: const TextStyle(fontSize: 16, height: 1.45),
                   ),
                 ),
@@ -885,7 +1225,7 @@ class _TopicActionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _TopicButton(
-                    label: 'All Questions',
+                    label: topic.questionType == 'written' ? 'Read Written' : 'All Questions',
                     background: const Color(0xFFDCD9FF),
                     onPressed: questionCount == 0 ? null : onAllQuestions,
                   ),
@@ -903,7 +1243,7 @@ class _TopicActionCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _TopicButton(
-                    label: 'Create Exam',
+                    label: topic.questionType == 'written' ? 'Written Exam' : 'Create Exam',
                     background: const Color(0xFFE2E7EF),
                     onPressed: questionCount == 0 ? null : onRandomExam,
                   ),

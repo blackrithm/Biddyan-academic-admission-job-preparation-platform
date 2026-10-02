@@ -5,6 +5,7 @@ import '../core/constants.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 
 /// Result & Analytics Sheet.
 ///
@@ -29,7 +30,8 @@ class ResultScreen extends ConsumerWidget {
     final breakdown = session.breakdown;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('রেজাল্ট অ্যানালাইসিস')),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),

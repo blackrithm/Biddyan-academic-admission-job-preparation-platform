@@ -15,6 +15,8 @@ CREATE TABLE topics (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     parent_id UUID REFERENCES topics(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    question_type VARCHAR(16) NOT NULL DEFAULT 'mcq' CHECK (question_type IN ('mcq', 'written')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -66,6 +68,59 @@ CREATE INDEX idx_questions_topic_id ON questions(topic_id);
 -- GIN (Generalized Inverted Index) for array intersections (millions of rows lookups on tags in microseconds)
 CREATE INDEX idx_questions_previous_years ON questions USING gin(previous_years);
 CREATE INDEX idx_questions_exam_type_set ON questions(exam_type, question_set);
+
+-- Written questions use a separate table because they do not have MCQ options.
+CREATE TABLE written_questions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    model_answer TEXT NOT NULL DEFAULT '',
+    marks DECIMAL(6, 2) NOT NULL DEFAULT 10 CHECK (marks > 0),
+    previous_years TEXT[] NOT NULL DEFAULT '{}',
+    difficulty_level VARCHAR(50) NOT NULL DEFAULT 'medium'
+        CHECK (difficulty_level IN ('easy', 'medium', 'hard')),
+    exam_type VARCHAR(100),
+    question_set VARCHAR(100),
+    source VARCHAR(100) NOT NULL DEFAULT 'admin',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_written_questions_topic_id ON written_questions(topic_id);
+
+CREATE TABLE written_question_sets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    format VARCHAR(16) NOT NULL CHECK (format IN ('cq', 'written')),
+    title VARCHAR(255) NOT NULL DEFAULT '',
+    stimulus TEXT NOT NULL DEFAULT '',
+    exam_type VARCHAR(100),
+    question_set VARCHAR(100),
+    previous_years TEXT[] NOT NULL DEFAULT '{}',
+    difficulty_level VARCHAR(50) NOT NULL DEFAULT 'medium'
+        CHECK (difficulty_level IN ('easy', 'medium', 'hard')),
+    source VARCHAR(100) NOT NULL DEFAULT 'admin',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE written_questions
+    ADD COLUMN set_id UUID REFERENCES written_question_sets(id) ON DELETE CASCADE,
+    ADD COLUMN item_order INTEGER NOT NULL DEFAULT 1;
+
+CREATE INDEX idx_written_questions_set_order
+    ON written_questions(set_id, item_order);
+
+CREATE TABLE written_exam_submissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+    answers JSONB NOT NULL,
+    review_status VARCHAR(24) NOT NULL DEFAULT 'pending'
+        CHECK (review_status IN ('pending', 'reviewed')),
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_written_submissions_user
+    ON written_exam_submissions(user_id, submitted_at DESC);
 
 -- Demo question-bank content
 INSERT INTO topics (id, name, parent_id) VALUES
@@ -178,7 +233,60 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. User Answers (Granular item analysis)
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_exams_created_by ON exams(created_by);
+
+CREATE TABLE exam_batches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    exam_type VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    image_url TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_published BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE exam_batch_exams (
+    batch_id UUID NOT NULL REFERENCES exam_batches(id) ON DELETE CASCADE,
+    exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+    starts_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    ends_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY (batch_id, exam_id),
+    CHECK (ends_at > starts_at)
+);
+
+CREATE INDEX idx_exam_batch_exams_schedule ON exam_batch_exams(starts_at, ends_at);
+
+CREATE TABLE exam_batch_enrollments (
+    batch_id UUID NOT NULL REFERENCES exam_batches(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    enrolled_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (batch_id, user_id)
+);
+
+CREATE INDEX idx_exam_batch_enrollments_user ON exam_batch_enrollments(user_id, enrolled_at DESC);
+
+-- 6. Persistent student study plans
+CREATE TABLE study_plans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    subject VARCHAR(100) NOT NULL,
+    duration_minutes INT NOT NULL DEFAULT 30 CHECK (duration_minutes BETWEEN 5 AND 600),
+    scheduled_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    note TEXT NOT NULL DEFAULT '',
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_study_plans_user_date
+    ON study_plans(user_id, scheduled_date, created_at);
+
+-- 7. User Answers (Granular item analysis)
 CREATE TABLE user_answers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     attempt_id UUID NOT NULL REFERENCES user_exam_attempts(id) ON DELETE CASCADE,

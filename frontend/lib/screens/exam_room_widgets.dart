@@ -140,8 +140,6 @@ class OptionCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (isSelected)
-                const Icon(Icons.check_circle, color: Colors.white),
             ],
           ),
         ),

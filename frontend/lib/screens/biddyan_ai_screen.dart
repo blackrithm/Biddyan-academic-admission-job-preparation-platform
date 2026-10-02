@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../core/constants.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 
 class BiddyanAiScreen extends StatefulWidget {
   const BiddyanAiScreen({super.key});
@@ -37,26 +38,19 @@ class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: AppConstants.golden),
-            SizedBox(width: 8),
-            Text('বিদ্বান AI'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'নতুন chat',
-            icon: const Icon(Icons.refresh),
-            onPressed: _resetChat,
-          ),
-        ],
-      ),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(),
       body: Column(
         children: [
           _buildIntro(),
-          Expanded(child: _buildMessages()),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 980),
+                child: _buildMessages(),
+              ),
+            ),
+          ),
           _buildComposer(),
         ],
       ),
@@ -68,16 +62,50 @@ class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
   }
 
   Widget _buildIntro() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      color: const Color(0xFFE8F3F1),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 680;
+        return Container(
+          width: double.infinity,
+          color: const Color(0xFFE8F3F1),
+          padding: EdgeInsets.fromLTRB(isWide ? 24 : 14, 14, isWide ? 24 : 14, 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 980),
+              child: isWide
+                  ? Row(
+                      children: [
+                        const _AiIntroIdentity(),
+                        const SizedBox(width: 24),
+                        Expanded(child: _promptList()),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _AiIntroIdentity(),
+                        const SizedBox(height: 12),
+                        _promptList(),
+                      ],
+                    ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _promptList() {
+    return SizedBox(
+      height: 42,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
         children: [
           _PromptChip(label: 'গণিত বুঝিয়ে দাও', onPressed: _usePrompt),
+          const SizedBox(width: 8),
           _PromptChip(label: 'এই MCQ-এর সমাধান কী?', onPressed: _usePrompt),
+          const SizedBox(width: 8),
           _PromptChip(label: 'ছবি থেকে প্রশ্ন পড়ো', onPressed: _usePrompt),
         ],
       ),
@@ -87,7 +115,7 @@ class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
   Widget _buildMessages() {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      padding: const EdgeInsets.fromLTRB(14, 20, 14, 18),
       itemCount: _messages.length + (_isThinking ? 1 : 0),
       itemBuilder: (context, index) {
         if (_isThinking && index == _messages.length) {
@@ -98,13 +126,14 @@ class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
         }
         final message = _messages[index];
         return Align(
-          alignment: message.fromUser
-              ? Alignment.centerRight
-              : Alignment.centerLeft,
-          child: _MessageBubble(
-            text: message.text,
-            fromUser: message.fromUser,
-            photo: message.photo,
+          alignment: message.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: _MessageBubble(
+              text: message.text,
+              fromUser: message.fromUser,
+              photo: message.photo,
+            ),
           ),
         );
       },
@@ -114,49 +143,60 @@ class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
   Widget _buildComposer() {
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Column(
-          children: [
-            if (_photo != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: InputChip(
-                  avatar: const Icon(Icons.image, size: 18),
-                  label: Text(_photo!.name, overflow: TextOverflow.ellipsis),
-                  onDeleted: () => setState(() => _photo = null),
-                ),
-              ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                IconButton(
-                  tooltip: 'ছবি যোগ করুন',
-                  icon: const Icon(Icons.add_photo_alternate_outlined),
-                  onPressed: _pickPhoto,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    minLines: 1,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.newline,
-                    decoration: const InputDecoration(
-                      hintText: 'আপনার প্রশ্ন লিখুন...',
-                      border: OutlineInputBorder(),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFDDE5E5))),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 980),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: Column(
+                children: [
+                  if (_photo != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: InputChip(
+                        avatar: const Icon(Icons.image, size: 18),
+                        label: Text(_photo!.name, overflow: TextOverflow.ellipsis),
+                        onDeleted: () => setState(() => _photo = null),
+                      ),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: 'ছবি যোগ করুন',
+                        icon: const Icon(Icons.add_photo_alternate_outlined),
+                        onPressed: _pickPhoto,
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          minLines: 1,
+                          maxLines: 4,
+                          textInputAction: TextInputAction.newline,
+                          decoration: const InputDecoration(
+                            hintText: 'আপনার প্রশ্ন লিখুন...',
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        tooltip: 'প্রশ্ন পাঠান',
+                        icon: const Icon(Icons.arrow_upward),
+                        onPressed: _isThinking ? null : _sendMessage,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  tooltip: 'প্রশ্ন পাঠান',
-                  icon: const Icon(Icons.arrow_upward),
-                  onPressed: _isThinking ? null : _sendMessage,
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -225,18 +265,6 @@ class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
     });
   }
 
-  void _resetChat() {
-    setState(() {
-      _messages
-        ..clear()
-        ..add(const _AiMessage(
-          text: 'আসসালামু আলাইকুম! আমি বিদ্বান AI। পড়াশোনার প্রশ্ন, MCQ, সূত্র বা কোনো কঠিন বিষয় বুঝতে আমাকে জিজ্ঞেস করুন।',
-          fromUser: false,
-        ));
-      _photo = null;
-    });
-  }
-
   void _usePrompt(String prompt) {
     _messageController
       ..text = prompt
@@ -288,6 +316,31 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AiIntroIdentity extends StatelessWidget {
+  const _AiIntroIdentity();
+
+  @override
+  Widget build(BuildContext context) => const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: AppConstants.primary,
+            child: Icon(Icons.auto_awesome, color: AppConstants.golden, size: 22),
+          ),
+          SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('বিদ্বান AI', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppConstants.primary)),
+              SizedBox(height: 2),
+              Text('আপনার পড়াশোনার সঙ্গী', style: TextStyle(fontSize: 12, color: AppConstants.mutedText)),
+            ],
+          ),
+        ],
+      );
 }
 
 class _PromptChip extends StatelessWidget {

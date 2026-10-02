@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/brand_navigation.dart';
+import 'mobile_dashboard.dart';
 
 enum ExamTab { live, upcoming, archive }
 
@@ -18,21 +19,14 @@ class ExamCalendarScreen extends StatefulWidget {
 class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
   ExamTab _tab = ExamTab.live;
   DateTime _selectedDate = DateTime.now();
+  bool _dateFilterEnabled = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(
-        title: const Text('পরীক্ষা ক্যালেন্ডার'),
-        actions: [
-          IconButton(
-            tooltip: 'ক্যালেন্ডার',
-            icon: const FaIcon(FontAwesomeIcons.calendarDays, size: 20),
-            onPressed: () => _pickDate(context),
-          ),
-        ],
-      ),
+      drawer: const DashboardDrawer(),
+      appBar: const BrandHeader(showNotifications: false),
       body: FutureBuilder<List<Exam>>(
         future: ExamService(apiClient).list(),
         builder: (context, snapshot) {
@@ -48,9 +42,13 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
             );
           }
           final exams = snapshot.data ?? const <Exam>[];
-          final filtered = exams
-              .where((exam) => _statusFor(exam) == _tab)
-              .toList();
+          final filtered = exams.where((exam) {
+            final matchesStatus = _statusFor(exam) == _tab;
+            final examDate = exam.startsAt ?? exam.endsAt;
+            final matchesDate = !_dateFilterEnabled ||
+                (examDate != null && _sameDate(examDate, _selectedDate));
+            return matchesStatus && matchesDate;
+          }).toList();
           return ListView(
             padding: const EdgeInsets.all(14),
             children: [
@@ -59,6 +57,13 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
                 onChanged: (date) => setState(() => _selectedDate = date),
               ),
               const SizedBox(height: 14),
+              _DateFilterBar(
+                selectedDate: _selectedDate,
+                enabled: _dateFilterEnabled,
+                onPick: _pickDate,
+                onClear: () => setState(() => _dateFilterEnabled = false),
+              ),
+              const SizedBox(height: 12),
               SegmentedButton<ExamTab>(
                 segments: const [
                   ButtonSegment(
@@ -112,15 +117,27 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
     return ExamTab.upcoming;
   }
 
-  Future<void> _pickDate(BuildContext context) async {
+  Future<void> _pickDate() async {
     final date = await showDatePicker(
       context: context,
-      firstDate: DateTime(2025),
-      lastDate: DateTime(2030),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
       initialDate: _selectedDate,
+      helpText: 'পরীক্ষার তারিখ নির্বাচন করুন',
     );
-    if (date != null) setState(() => _selectedDate = date);
+    if (date != null && mounted) {
+      setState(() {
+        _selectedDate = date;
+        _dateFilterEnabled = true;
+      });
+    }
   }
+
+  static bool _sameDate(DateTime first, DateTime second) =>
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+
 }
 class _CalendarStrip extends StatelessWidget {
   const _CalendarStrip({required this.selectedDate, required this.onChanged});
@@ -217,12 +234,22 @@ class _ExamCard extends StatelessWidget {
                         fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
-                Chip(
-                  label: Text(label),
-                  backgroundColor: color.withValues(alpha: 0.12),
-                  labelStyle:
-                      TextStyle(color: color, fontWeight: FontWeight.w700),
-                  side: BorderSide.none,
+                Container(
+                  height: 30,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -231,35 +258,25 @@ class _ExamCard extends StatelessWidget {
                 style: const TextStyle(color: AppConstants.mutedText)),
             const Divider(height: 18),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.calendar_today,
-                    size: 16, color: AppConstants.mutedText),
-                const SizedBox(width: 5),
-                const Icon(Icons.access_time,
-                    size: 16, color: AppConstants.mutedText),
-                const SizedBox(width: 5),
-                Text(_formatDateTime(exam.startsAt ?? DateTime.now())),
-                const SizedBox(width: 16),
-                const Icon(Icons.people_outline,
-                    size: 17, color: AppConstants.mutedText),
-                const SizedBox(width: 5),
-                Text('${exam.totalMarks.toStringAsFixed(0)} নম্বর'),
-                const Spacer(),
-                SizedBox(
-                  width: 96,
-                  height: 42,
-                  child: FilledButton(
-                    onPressed: () => _showAction(
-                        context, archived ? 'ফলাফল দেখুন' : 'পরীক্ষা শুরু করুন'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: Size.zero,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      textStyle: const TextStyle(fontSize: 12),
-                    ),
-                    child: Text(archived
-                        ? 'ফলাফল'
-                        : (live ? 'Start Exam' : 'রিমাইন্ডার')),
+                Expanded(
+                  child: _ExamMeta(
+                    date: _formatDateTime(exam.startsAt ?? DateTime.now()),
+                    marks: '${exam.totalMarks.toStringAsFixed(0)} নম্বর',
                   ),
+                ),
+                const SizedBox(width: 8),
+                _ExamActionButton(
+                  archived: archived,
+                  live: live,
+                  onPressed: () {
+                    if (archived) {
+                      context.push('/exam/${exam.id}/read');
+                    } else {
+                      _showAction(context, 'পরীক্ষা শুরু করুন');
+                    }
+                  },
                 ),
               ],
             ),
@@ -280,6 +297,138 @@ class _ExamCard extends StatelessWidget {
   static void _showAction(BuildContext context, String action) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('$action শীঘ্রই যুক্ত হবে।')));
+  }
+
+}
+
+class _DateFilterBar extends StatelessWidget {
+  const _DateFilterBar({
+    required this.selectedDate,
+    required this.enabled,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final DateTime selectedDate;
+  final bool enabled;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 54,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: enabled ? AppConstants.primary : const Color(0xFFDDE5E5),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              enabled ? Icons.event_available_outlined : Icons.event_outlined,
+              size: 20,
+              color: AppConstants.primary,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                enabled ? 'নির্বাচিত তারিখ: ${_formatDate(selectedDate)}' : 'নির্দিষ্ট তারিখে পরীক্ষা খুঁজুন',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (enabled)
+              IconButton(
+                tooltip: 'তারিখ ফিল্টার মুছুন',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: onClear,
+              ),
+            FilledButton.icon(
+              onPressed: onPick,
+              icon: const Icon(Icons.calendar_month_outlined, size: 17),
+              label: Text(enabled ? 'তারিখ বদলান' : 'তারিখ নির্বাচন'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                backgroundColor: AppConstants.primary,
+                foregroundColor: Colors.white,
+                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  static String _formatDate(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+class _ExamMeta extends StatelessWidget {
+  const _ExamMeta({required this.date, required this.marks});
+
+  final String date;
+  final String marks;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 5,
+        runSpacing: 3,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          const Icon(Icons.calendar_today, size: 15, color: AppConstants.mutedText),
+          const Icon(Icons.access_time, size: 15, color: AppConstants.mutedText),
+          Text(date, style: const TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+          const SizedBox(width: 5),
+          const Icon(Icons.people_outline, size: 16, color: AppConstants.mutedText),
+          Text(marks, style: const TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+        ],
+      );
+}
+
+class _ExamActionButton extends StatelessWidget {
+  const _ExamActionButton({required this.archived, required this.live, required this.onPressed});
+
+  final bool archived;
+  final bool live;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = archived
+        ? AppConstants.primary
+        : live
+            ? AppConstants.accent
+            : const Color(0xFFE7A51B);
+    return SizedBox(
+      width: archived ? 104 : 96,
+      height: 38,
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          archived ? Icons.menu_book_outlined : (live ? Icons.play_arrow : Icons.notifications_none),
+          size: 15,
+        ),
+        label: Text(
+          archived ? 'Read Mode' : (live ? 'Start Exam' : 'Reminder'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: Colors.white,
+          minimumSize: Size.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
   }
 }
 
