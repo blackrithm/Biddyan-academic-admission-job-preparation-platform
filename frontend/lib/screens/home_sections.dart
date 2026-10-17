@@ -116,7 +116,7 @@ class _StudyCard extends StatelessWidget {
                   ],
                 ),
               ),
-                const Icon(Icons.arrow_forward_ios,
+              const Icon(Icons.arrow_forward_ios,
                   size: 14, color: AppConstants.mutedText),
             ],
           ),
@@ -148,7 +148,7 @@ class ExamList extends StatelessWidget {
                   'নেগেটিভ ${exam.negativeMarking}'
                   '${exam.startsAt == null ? '' : '\nসময়: ${_formatDateTime(exam.startsAt!)}'}',
                 ),
-                onTap: () => context.go('/exam/${exam.id}'),
+                onTap: () => context.push('/exam/${exam.id}'),
               ),
             ),
           ),

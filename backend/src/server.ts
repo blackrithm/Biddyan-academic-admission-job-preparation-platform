@@ -54,7 +54,7 @@ app.listen(PORT, async () => {
     console.error('Could not provision admin account:', error);
   }
   console.log(`===============================================`);
-  console.log(`🚀 Biddyan Core Backend running on port ${PORT}`);
+  console.log(`🚀 Bidwaan Core Backend running on port ${PORT}`);
   console.log(`🔌 Database Pool initialized`);
   console.log(`⚡ Redis client online`);
   console.log(`===============================================`);

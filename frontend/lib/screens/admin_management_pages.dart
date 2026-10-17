@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
+import '../widgets/brand_navigation.dart';
 import 'admin_exam_form.dart';
 import 'admin_question_bank.dart';
 import 'admin_question_form.dart';
@@ -18,7 +19,7 @@ class AdminSectionShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(leading: const AppBackButton(), title: Text(title)),
       body: child,
     );
   }
@@ -382,7 +383,38 @@ class AdminNotificationsPage extends StatefulWidget {
 class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
-  final _items = <String>[];
+  final _items = <AppNotification>[];
+  bool _isLoading = true;
+  bool _isPublishing = false;
+  String? _errorMessage;
+
+  NotificationService get _notificationService => NotificationService(apiClient);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    try {
+      final items = await _notificationService.list();
+      if (!mounted) return;
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(items);
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -391,13 +423,34 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     super.dispose();
   }
 
-  void _publish() {
-    if (_titleController.text.trim().isEmpty || _messageController.text.trim().isEmpty) return;
-    setState(() {
-      _items.insert(0, '${_titleController.text.trim()}|${_messageController.text.trim()}');
-      _titleController.clear();
-      _messageController.clear();
-    });
+  Future<void> _publish() async {
+    if (_isPublishing || _titleController.text.trim().isEmpty || _messageController.text.trim().isEmpty) return;
+    final title = _titleController.text.trim();
+    final message = _messageController.text.trim();
+    setState(() => _isPublishing = true);
+    try {
+      final item = await _notificationService.create(title: title, message: message);
+      if (!mounted) return;
+      setState(() {
+        _items.insert(0, item);
+        _titleController.clear();
+        _messageController.clear();
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
+  Future<void> _removeItem(AppNotification item) async {
+    try {
+      await _notificationService.remove(item.id);
+      if (mounted) setState(() => _items.remove(item));
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = error.toString());
+    }
   }
 
   @override
@@ -408,21 +461,26 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         padding: const EdgeInsets.all(16),
         children: [
           _AdminIntro(icon: Icons.notifications_active, text: 'শিক্ষার্থীদের জন্য notice ও notification publish করুন।'),
+          if (_errorMessage != null) ...[
+            Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            const SizedBox(height: 12),
+          ],
           TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Notification title')),
           const SizedBox(height: 12),
           TextField(controller: _messageController, maxLines: 4, decoration: const InputDecoration(labelText: 'Message')),
           const SizedBox(height: 16),
-          FilledButton.icon(onPressed: _publish, icon: const Icon(Icons.send), label: const Text('Publish notification')),
+          FilledButton.icon(onPressed: _isPublishing ? null : _publish, icon: const Icon(Icons.send), label: const Text('Publish notification')),
           const SizedBox(height: 24),
           _AdminListTitle(title: 'Published notifications', count: _items.length),
-          if (_items.isEmpty) const _EmptyAdminState(text: 'এখনো কোনো notification publish করা হয়নি।'),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
+          if (!_isLoading && _items.isEmpty) const _EmptyAdminState(text: 'এখনো কোনো notification publish করা হয়নি।'),
           for (final item in _items)
             Card(
               child: ListTile(
                 leading: const Icon(Icons.notifications_none),
-                title: Text(item.split('|')[0]),
-                subtitle: Text(item.split('|')[1]),
-                trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => _items.remove(item))),
+                title: Text(item.title),
+                subtitle: Text(item.message),
+                trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _removeItem(item)),
               ),
             ),
         ],

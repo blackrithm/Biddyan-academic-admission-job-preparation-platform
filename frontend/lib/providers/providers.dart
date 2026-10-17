@@ -63,7 +63,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           token: token,
           userId: data['userId'] as String,
           phoneNumber: data['phoneNumber'] as String? ?? '',
-          displayName: data['displayName'] as String? ?? 'Biddyan User',
+          displayName: data['displayName'] as String? ?? 'Bidwaan User',
           role: data['role'] as String? ?? 'student',
           email: data['email'] as String?,
         );
@@ -167,7 +167,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: 'b1dd1a11-0000-4000-8000-000000000101',
         phoneNumber: '',
         displayName: '$provider User',
-        email: 'user@biddyan.id',
+        email: 'user@bidwaan.id',
       );
       apiClient.authToken = user.token;
       await _persistSession(user);

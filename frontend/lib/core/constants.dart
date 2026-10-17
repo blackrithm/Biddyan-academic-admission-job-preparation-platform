@@ -1,4 +1,4 @@
-/// Global application constants for Biddyan.
+/// Global application constants for Bidwaan.
 library;
 
 import 'package:flutter/material.dart';

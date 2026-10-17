@@ -8,6 +8,7 @@ import { ProfileController } from '../controllers/profileController';
 import { RoutineController } from '../controllers/routineController';
 import { WrittenQuestionController } from '../controllers/writtenQuestionController';
 import { ExamBatchController } from '../controllers/examBatchController';
+import { NotificationController } from '../controllers/notificationController';
 
 const router = Router();
 
@@ -24,6 +25,11 @@ router.get('/profile/stats', requireAuth, ProfileController.getStats);
 router.get('/profile/recent-activity', requireAuth, ProfileController.getRecentActivity);
 router.put('/profile', requireAuth, ProfileController.updateProfile);
 router.put('/profile/password', requireAuth, ProfileController.changePassword);
+
+// --- NOTIFICATIONS ---
+router.get('/notifications', NotificationController.list);
+router.post('/notifications', requireAdmin, NotificationController.create);
+router.delete('/notifications/:id', requireAdmin, NotificationController.remove);
 
 // --- STUDY ROUTINE ---
 router.get('/routine', requireAuth, RoutineController.list);
@@ -58,11 +64,14 @@ router.post('/written-exams/:topicId/submit', WrittenQuestionController.submit);
 // --- EXAMS ENGINE ROUTES ---
 router.get('/exam-batches', ExamBatchController.list);
 router.get('/exam-batches/mine', requireAuth, ExamBatchController.mine);
+router.get('/admin/exam-batch-payments', requireAdmin, ExamBatchController.listPayments);
+router.put('/admin/exam-batch-payments/:paymentId', requireAdmin, ExamBatchController.updatePayment);
 router.get('/exam-batches/:batchId', optionalAuth, ExamBatchController.getById);
 router.post('/exam-batches', requireAdmin, ExamBatchController.create);
 router.put('/exam-batches/reorder', requireAdmin, ExamBatchController.reorder);
 router.put('/exam-batches/:batchId', requireAdmin, ExamBatchController.update);
 router.post('/exam-batches/:batchId/enroll', requireAuth, ExamBatchController.enroll);
+router.post('/exam-batches/:batchId/payments', requireAuth, ExamBatchController.submitPayment);
 router.post('/exams', requireAdmin, ExamController.createExam);
 // Practice exams generated from a published question set are available to
 // guests as well as signed-in users.

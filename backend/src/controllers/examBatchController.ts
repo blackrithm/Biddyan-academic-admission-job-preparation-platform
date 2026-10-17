@@ -2,6 +2,13 @@ import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middleware/auth';
 
+const paymentProviders = ['bkash', 'nagad', 'rocket'];
+const paymentReceiver = '01301051585';
+
+function normalizedPaymentNumber(value: unknown) {
+  return String(value ?? '').replace(/[\s-]/g, '').replace(/^\+?88/, '');
+}
+
 export class ExamBatchController {
   static async list(_req: Request, res: Response) {
     try {
@@ -62,6 +69,17 @@ export class ExamBatchController {
       `, [req.params.batchId, (req as AuthenticatedRequest).auth?.userId ?? null]);
       if (batch.rows.length === 0) return res.status(404).json({ error: 'Exam batch not found' });
 
+      const userId = (req as AuthenticatedRequest).auth?.userId;
+      const payment = userId
+        ? await pool.query(`
+            SELECT id, provider, amount, status, review_note, created_at
+            FROM exam_batch_payment_requests
+            WHERE batch_id = $1 AND user_id = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+          `, [req.params.batchId, userId])
+        : { rows: [] };
+
       const exams = await pool.query(`
         SELECT e.id, e.title, e.total_marks, e.pass_mark, e.negative_marking_per_wrong,
                e.duration_minutes, e.topic_id, t.name AS topic_name,
@@ -73,16 +91,24 @@ export class ExamBatchController {
         WHERE be.batch_id = $1
         ORDER BY be.starts_at ASC
       `, [req.params.batchId]);
-      return res.status(200).json({ ...batch.rows[0], exams: exams.rows });
+      return res.status(200).json({
+        ...batch.rows[0],
+        payment_request: payment.rows[0] ?? null,
+        exams: exams.rows,
+      });
     } catch (error: any) {
       return res.status(500).json({ error: error.message });
     }
   }
 
   static async create(req: Request, res: Response) {
-    const { name, examType, description = '', imageUrl = null, exams } = req.body;
+    const { name, examType, description = '', imageUrl = null, exams, price = 0, demoExamIds = [] } = req.body;
     if (!String(name ?? '').trim() || !String(examType ?? '').trim() || !Array.isArray(exams) || exams.length === 0) {
       return res.status(400).json({ error: 'name, examType and at least one scheduled exam are required' });
+    }
+    const batchPrice = Number(price);
+    if (!Number.isFinite(batchPrice) || batchPrice < 0 || !Array.isArray(demoExamIds)) {
+      return res.status(400).json({ error: 'price must be non-negative and demoExamIds must be an array' });
     }
     const schedules = exams.map((item: any) => ({
       examId: String(item.examId ?? ''),
@@ -94,6 +120,9 @@ export class ExamBatchController {
     if (new Set(schedules.map((item: any) => item.examId)).size !== schedules.length) {
       return res.status(400).json({ error: 'An exam can only be added once to a batch' });
     }
+    if (demoExamIds.some((id: unknown) => typeof id !== 'string' || !schedules.some((schedule: any) => schedule.examId === id))) {
+      return res.status(400).json({ error: 'Demo exams must be selected from the exams scheduled in this batch' });
+    }
 
     const client = await pool.connect();
     try {
@@ -102,10 +131,10 @@ export class ExamBatchController {
       const order = await client.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM exam_batches');
       const createdBy = (req as AuthenticatedRequest).auth!.userId;
       const batchResult = await client.query(`
-        INSERT INTO exam_batches (name, exam_type, description, image_url, sort_order, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO exam_batches (name, exam_type, description, image_url, price, demo_exam_ids, sort_order, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
-      `, [String(name).trim(), String(examType).trim(), String(description).trim(), imageUrl, order.rows[0].next_order, createdBy]);
+      `, [String(name).trim(), String(examType).trim(), String(description).trim(), imageUrl, batchPrice, demoExamIds, order.rows[0].next_order, createdBy]);
       const batch = batchResult.rows[0];
 
       for (const schedule of schedules) {
@@ -132,9 +161,13 @@ export class ExamBatchController {
   }
 
   static async update(req: Request, res: Response) {
-    const { name, examType, description = '', imageUrl = null, exams } = req.body;
+    const { name, examType, description = '', imageUrl = null, exams, price = 0, demoExamIds = [] } = req.body;
     if (!String(name ?? '').trim() || !String(examType ?? '').trim() || !Array.isArray(exams) || exams.length === 0) {
       return res.status(400).json({ error: 'name, examType and at least one scheduled exam are required' });
+    }
+    const batchPrice = Number(price);
+    if (!Number.isFinite(batchPrice) || batchPrice < 0 || !Array.isArray(demoExamIds)) {
+      return res.status(400).json({ error: 'price must be non-negative and demoExamIds must be an array' });
     }
     const schedules = exams.map((item: any) => ({
       examId: String(item.examId ?? ''),
@@ -146,16 +179,20 @@ export class ExamBatchController {
     if (new Set(schedules.map((item: any) => item.examId)).size !== schedules.length) {
       return res.status(400).json({ error: 'An exam can only be added once to a batch' });
     }
+    if (demoExamIds.some((id: unknown) => typeof id !== 'string' || !schedules.some((schedule: any) => schedule.examId === id))) {
+      return res.status(400).json({ error: 'Demo exams must be selected from the exams scheduled in this batch' });
+    }
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const updated = await client.query(`
         UPDATE exam_batches
-        SET name = $1, exam_type = $2, description = $3, image_url = $4
-        WHERE id = $5
+        SET name = $1, exam_type = $2, description = $3, image_url = $4,
+            price = $5, demo_exam_ids = $6
+        WHERE id = $7
         RETURNING *
-      `, [String(name).trim(), String(examType).trim(), String(description).trim(), imageUrl, req.params.batchId]);
+      `, [String(name).trim(), String(examType).trim(), String(description).trim(), imageUrl, batchPrice, demoExamIds, req.params.batchId]);
       if (updated.rows.length === 0) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Exam batch not found' });
@@ -214,6 +251,17 @@ export class ExamBatchController {
   static async enroll(req: Request, res: Response) {
     try {
       const userId = (req as AuthenticatedRequest).auth!.userId;
+      const batch = await pool.query(
+        'SELECT price FROM exam_batches WHERE id = $1 AND is_published = TRUE',
+        [req.params.batchId],
+      );
+      if (batch.rows.length === 0) return res.status(404).json({ error: 'Exam batch not found' });
+      if (Number(batch.rows[0].price) > 0) {
+        return res.status(402).json({
+          error: 'Payment is required to join this batch. Online payment is not configured yet.',
+          price: Number(batch.rows[0].price),
+        });
+      }
       const result = await pool.query(`
         INSERT INTO exam_batch_enrollments (batch_id, user_id)
         SELECT id, $2 FROM exam_batches WHERE id = $1 AND is_published = TRUE
@@ -230,6 +278,177 @@ export class ExamBatchController {
       return res.status(200).json({ enrolled: true });
     } catch (error: any) {
       return res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async submitPayment(req: Request, res: Response) {
+    const userId = (req as AuthenticatedRequest).auth!.userId;
+    const provider = String(req.body.provider ?? '').toLowerCase();
+    const paidFromNumber = normalizedPaymentNumber(req.body.paidFromNumber);
+    const transactionId = String(req.body.transactionId ?? '').trim().toUpperCase();
+
+    if (!paymentProviders.includes(provider)) {
+      return res.status(400).json({ error: 'Choose bKash, Nagad, or Rocket' });
+    }
+    if (!/^01[3-9]\d{8}$/.test(paidFromNumber)) {
+      return res.status(400).json({ error: 'Enter a valid Bangladeshi mobile number' });
+    }
+    if (!/^[A-Z0-9-]{5,64}$/.test(transactionId)) {
+      return res.status(400).json({ error: 'Enter a valid transaction ID' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const batch = await client.query(`
+        SELECT price FROM exam_batches
+        WHERE id = $1 AND is_published = TRUE
+        FOR SHARE
+      `, [req.params.batchId]);
+      if (batch.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Exam batch not found' });
+      }
+      const amount = Number(batch.rows[0].price);
+      if (amount <= 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'This batch is free; use free enrollment instead' });
+      }
+
+      const enrollment = await client.query(
+        'SELECT 1 FROM exam_batch_enrollments WHERE batch_id = $1 AND user_id = $2',
+        [req.params.batchId, userId],
+      );
+      if (enrollment.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'You are already enrolled in this batch' });
+      }
+
+      const inserted = await client.query(`
+        INSERT INTO exam_batch_payment_requests (
+          batch_id, user_id, provider, receiver_number, pay_type, amount,
+          paid_from_number, transaction_id
+        ) VALUES ($1, $2, $3, $4, 'send_money', $5, $6, $7)
+        RETURNING id, batch_id, provider, receiver_number, pay_type, amount,
+                  paid_from_number, transaction_id, status, created_at
+      `, [req.params.batchId, userId, provider, paymentReceiver, amount, paidFromNumber, transactionId]);
+
+      await client.query('COMMIT');
+      return res.status(201).json(inserted.rows[0]);
+    } catch (error: any) {
+      await client.query('ROLLBACK');
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'This transaction ID or pending payment request already exists' });
+      }
+      console.error('Error submitting batch payment:', error);
+      return res.status(500).json({ error: 'Could not submit payment details' });
+    } finally {
+      client.release();
+    }
+  }
+
+  static async listPayments(_req: Request, res: Response) {
+    try {
+      const result = await pool.query(`
+        SELECT p.*, b.name AS batch_name,
+               COALESCE(u.display_name, 'শিক্ষার্থী') AS student_name,
+               u.phone_number AS student_phone,
+               COALESCE(reviewer.display_name, '') AS reviewer_name
+        FROM exam_batch_payment_requests p
+        JOIN exam_batches b ON b.id = p.batch_id
+        JOIN users u ON u.id = p.user_id
+        LEFT JOIN users reviewer ON reviewer.id = p.reviewed_by
+        ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END,
+                 p.created_at DESC
+      `);
+      return res.status(200).json(result.rows);
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async updatePayment(req: Request, res: Response) {
+    const { provider, paidFromNumber, transactionId, status, reviewNote } = req.body;
+    const normalizedProvider = provider === undefined
+      ? undefined
+      : String(provider).toLowerCase();
+    const normalizedNumber = paidFromNumber === undefined
+      ? undefined
+      : normalizedPaymentNumber(paidFromNumber);
+    const normalizedTransactionId = transactionId === undefined
+      ? undefined
+      : String(transactionId).trim().toUpperCase();
+
+    if (normalizedProvider !== undefined && !paymentProviders.includes(normalizedProvider)) {
+      return res.status(400).json({ error: 'Choose bKash, Nagad, or Rocket' });
+    }
+    if (normalizedNumber !== undefined && !/^01[3-9]\d{8}$/.test(normalizedNumber)) {
+      return res.status(400).json({ error: 'Enter a valid Bangladeshi mobile number' });
+    }
+    if (normalizedTransactionId !== undefined && !/^[A-Z0-9-]{5,64}$/.test(normalizedTransactionId)) {
+      return res.status(400).json({ error: 'Enter a valid transaction ID' });
+    }
+    if (status !== undefined && !['approved', 'failed'].includes(status)) {
+      return res.status(400).json({ error: 'Payment status must be approved or failed' });
+    }
+    if (status === 'failed' && !String(reviewNote ?? '').trim()) {
+      return res.status(400).json({ error: 'Add a reason when marking payment failed' });
+    }
+    if (status === 'approved' && String(reviewNote ?? '').trim()) {
+      return res.status(400).json({ error: 'Remove the failure reason before approving' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query(
+        'SELECT * FROM exam_batch_payment_requests WHERE id = $1 FOR UPDATE',
+        [req.params.paymentId],
+      );
+      if (existing.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Payment request not found' });
+      }
+      if (existing.rows[0].status !== 'pending') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Only pending payments can be edited or reviewed' });
+      }
+
+      const newStatus = status ?? 'pending';
+      const updated = await client.query(`
+        UPDATE exam_batch_payment_requests
+        SET provider = COALESCE($1, provider),
+            paid_from_number = COALESCE($2, paid_from_number),
+            transaction_id = COALESCE($3, transaction_id),
+            status = $4::VARCHAR,
+            review_note = CASE WHEN $4::VARCHAR = 'failed' THEN $5 ELSE NULL END,
+            reviewed_by = CASE WHEN $4::VARCHAR = 'pending' THEN NULL::UUID ELSE $6::UUID END,
+            reviewed_at = CASE WHEN $4::VARCHAR = 'pending' THEN NULL ELSE NOW() END
+        WHERE id = $7
+        RETURNING *
+      `, [normalizedProvider ?? null, normalizedNumber ?? null, normalizedTransactionId ?? null,
+        newStatus, String(reviewNote ?? '').trim() || null,
+        (req as AuthenticatedRequest).auth!.userId, req.params.paymentId]);
+
+      if (newStatus === 'approved') {
+        await client.query(`
+          INSERT INTO exam_batch_enrollments (batch_id, user_id)
+          VALUES ($1, $2)
+          ON CONFLICT (batch_id, user_id) DO NOTHING
+        `, [existing.rows[0].batch_id, existing.rows[0].user_id]);
+      }
+
+      await client.query('COMMIT');
+      return res.status(200).json(updated.rows[0]);
+    } catch (error: any) {
+      await client.query('ROLLBACK');
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'This transaction ID is already recorded' });
+      }
+      console.error('Error updating batch payment:', error);
+      return res.status(500).json({ error: 'Could not update payment request' });
+    } finally {
+      client.release();
     }
   }
 }

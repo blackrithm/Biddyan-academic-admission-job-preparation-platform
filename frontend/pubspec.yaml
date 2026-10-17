@@ -1,5 +1,5 @@
 name: biddyan
-description: "Biddyan — Bengali Job & BCS Preparation Platform (Flutter Web, Android, iOS)."
+description: "Bidwaan — Bengali Job & BCS Preparation Platform (Flutter Web, Android, iOS)."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -52,6 +52,20 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  image_path: assets/bidwaan_app_icon.png
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: '#FFFFFF'
+  adaptive_icon_foreground: assets/bidwaan_app_icon.png
+  web:
+    generate: true
+    image_path: assets/bidwaan_app_icon.png
+    background_color: '#FFFFFF'
+    theme_color: '#00343A'
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -65,11 +79,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/biddyan_logo.png
+    - assets/bidwaan_app_icon.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

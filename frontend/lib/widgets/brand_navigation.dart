@@ -4,49 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 
-class BrandNotificationPopup {
-  const BrandNotificationPopup._();
-
-  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        builder: (context) => const SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(14, 0, 14, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: Color(0xFFE8F3F1),
-                    child: Icon(Icons.notifications_active_outlined, color: AppConstants.primary),
-                  ),
-                  title: Text('নোটিফিকেশন', style: TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: Text('আপনার সাম্প্রতিক আপডেটগুলো'),
-                ),
-                Divider(height: 1),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.campaign_outlined, color: AppConstants.primary),
-                  title: Text('নতুন পরীক্ষার আপডেট'),
-                  subtitle: Text('আপনার জন্য নতুন exam ও study update এসেছে।'),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.auto_awesome_outlined, color: AppConstants.primary),
-                  title: Text('বিদ্বান AI এখন প্রস্তুত'),
-                  subtitle: Text('যেকোনো প্রশ্ন নিয়ে AI-এর সঙ্গে practice করুন।'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
 class BrandDrawer extends StatelessWidget {
   const BrandDrawer({super.key});
 
@@ -71,25 +28,35 @@ class BrandDrawer extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1),
-              _drawerItem(context, Icons.auto_awesome, 'বিদ্বান AI', '/biddyan-ai'),
-              _drawerItem(context, Icons.analytics_outlined, 'Performance', '/profile'),
-              _drawerItem(context, Icons.card_giftcard, 'Referral Program', null),
-              _drawerItem(context, Icons.person_add_alt_1, 'Account খুলুন / Login', '/account'),
+              _drawerItem(
+                  context, Icons.auto_awesome, 'Bidwaan AI', '/biddyan-ai'),
+              _drawerItem(
+                  context, Icons.analytics_outlined, 'Performance', '/profile'),
+              _drawerItem(
+                  context, Icons.card_giftcard, 'Referral Program', null),
+              _drawerItem(context, Icons.person_add_alt_1,
+                  'Account খুলুন / Login', '/account'),
               const Divider(),
-              _drawerItem(context, Icons.support_agent, 'Contact Support', null),
+              _drawerItem(
+                  context, Icons.support_agent, 'Contact Support', null),
               _drawerItem(context, Icons.help_outline, 'FAQs', null),
               _drawerItem(context, Icons.info_outline, 'About Us', null),
               const Divider(),
               _drawerItem(context, Icons.home_outlined, 'হোম', '/'),
-              _drawerItem(context, Icons.menu_book_outlined, 'বই ও শিক্ষাসামগ্রী', '/books'),
-              _drawerItem(context, Icons.calendar_month_outlined, 'পরীক্ষা ক্যালেন্ডার', '/exam-calendar'),
-              _drawerItem(context, Icons.edit_calendar_outlined, 'রুটিন', '/routine'),
+              _drawerItem(context, Icons.menu_book_outlined,
+                  'বই ও শিক্ষাসামগ্রী', '/books'),
+              _drawerItem(context, Icons.calendar_month_outlined,
+                  'পরীক্ষা ক্যালেন্ডার', '/exam-calendar'),
+              _drawerItem(
+                  context, Icons.edit_calendar_outlined, 'রুটিন', '/routine'),
             ],
           ),
         ),
       );
 
-  static Widget _drawerItem(BuildContext context, IconData icon, String label, String? route) => ListTile(
+  static Widget _drawerItem(
+          BuildContext context, IconData icon, String label, String? route) =>
+      ListTile(
         leading: Icon(icon, color: AppConstants.primary),
         title: Text(label),
         trailing: route == null ? null : const Icon(Icons.chevron_right),
@@ -97,7 +64,7 @@ class BrandDrawer extends StatelessWidget {
             ? null
             : () {
                 Navigator.pop(context);
-                context.go(route);
+                context.push(route);
               },
       );
 }
@@ -127,35 +94,76 @@ class BrandHeader extends StatelessWidget implements PreferredSizeWidget {
         centerTitle: true,
         title: Image.asset('assets/biddyan_logo.png', height: 44),
         leading: Builder(
-          builder: (context) => IconButton(
-            tooltip: menuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন',
-            icon: Icon(menuOpen ? Icons.close : Icons.menu),
-            onPressed: () {
-              if (onMenu != null) {
-                onMenu!(context);
-              } else {
-                _showFallbackMenu(context);
-              }
-            },
-          ),
+          builder: (context) => GoRouterState.of(context).uri.path == '/'
+              ? _menuButton(context)
+              : AppBackButton(
+                  onPressed: () => _goBack(context),
+                ),
         ),
         actions: [
+          if (GoRouterState.of(context).uri.path != '/')
+            Builder(builder: _menuButton),
           if (showNotifications)
             IconButton(
               tooltip: 'নোটিশ',
               icon: const Badge(
-                label: Text('10'),
+                label: Text('2'),
                 child: Icon(Icons.notifications_none),
               ),
-              onPressed: onNotification ?? () => BrandNotificationPopup.show(context),
+              onPressed: onNotification ??
+                  () {
+                    context.push('/notifications');
+                  },
             ),
           ...extraActions,
         ],
       );
 
+  Widget _menuButton(BuildContext context) => IconButton(
+        tooltip: menuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন',
+        icon: Icon(menuOpen ? Icons.close : Icons.menu),
+        onPressed: () {
+          if (onMenu != null) {
+            onMenu!(context);
+          } else {
+            _showFallbackMenu(context);
+          }
+        },
+      );
+
+  void _goBack(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+    } else {
+      router.go('/');
+    }
+  }
+
   void _showFallbackMenu(BuildContext context) {
     Scaffold.maybeOf(context)?.openDrawer();
   }
+}
+
+class AppBackButton extends StatelessWidget {
+  const AppBackButton({super.key, this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: 'পিছনে যান',
+        icon: const Icon(Icons.arrow_back),
+        onPressed: onPressed ??
+            () {
+              final router = GoRouter.of(context);
+              if (router.canPop()) {
+                router.pop();
+              } else {
+                router.go('/');
+              }
+            },
+      );
 }
 
 class BrandMenuButton extends StatelessWidget {
@@ -181,7 +189,8 @@ class BrandMenuButton extends StatelessWidget {
                 backgroundColor: Color(0xFFE8F3F1),
                 child: Icon(Icons.menu_book, color: Color(0xFF00343A)),
               ),
-              title: Text('বিদ্বান', style: TextStyle(fontWeight: FontWeight.w800)),
+              title: Text('Bidwaan',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text('আপনার পড়াশোনার shortcuts'),
             ),
             for (final item in _menuItems)
@@ -191,7 +200,7 @@ class BrandMenuButton extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  context.go(item.$3);
+                  context.push(item.$3);
                 },
               ),
             const SizedBox(height: 8),
@@ -207,8 +216,19 @@ class BrandMenuButton extends StatelessWidget {
     (Icons.calendar_month_outlined, 'পরীক্ষা ক্যালেন্ডার', '/exam-calendar'),
     (Icons.edit_calendar_outlined, 'রুটিন', '/routine'),
     (Icons.person_outline, 'প্রোফাইল', '/profile'),
-    (Icons.auto_awesome_outlined, 'বিদ্বান AI', '/biddyan-ai'),
+    (Icons.auto_awesome_outlined, 'Bidwaan AI', '/biddyan-ai'),
   ];
+}
+
+class PersistentFooterScope extends InheritedWidget {
+  const PersistentFooterScope({super.key, required super.child});
+
+  static bool isActive(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PersistentFooterScope>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(PersistentFooterScope oldWidget) => false;
 }
 
 class BrandBottomNavigation extends StatelessWidget {
@@ -216,62 +236,150 @@ class BrandBottomNavigation extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onSelected,
+    this.isPersistent = false,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final bool isPersistent;
+
+  static const _destinations = [
+    _FooterDestination(FontAwesomeIcons.house, 'হোম'),
+    _FooterDestination(FontAwesomeIcons.bookOpen, 'বই'),
+    _FooterDestination(FontAwesomeIcons.rectangleList, 'প্রস্তুতি'),
+    _FooterDestination(FontAwesomeIcons.filePen, 'রুটিন'),
+    _FooterDestination(FontAwesomeIcons.user, 'প্রোফাইল'),
+    _FooterDestination(FontAwesomeIcons.wandMagicSparkles, 'Bidwaan AI'),
+  ];
+
+  static String locationFor(int index) => switch (index) {
+        0 => '/',
+        1 => '/books',
+        2 => '/preparation',
+        3 => '/routine',
+        4 => '/profile',
+        5 => '/biddyan-ai',
+        _ => '/',
+      };
 
   static void navigate(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        context.go('/');
-          case 1:
-            context.go('/books');
-      case 2:
-        context.go('/preparation');
-      case 3:
-        context.go('/routine');
-      case 4:
-        context.go('/profile');
-      case 5:
-        context.go('/biddyan-ai');
-    }
+    context.push(locationFor(index));
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-        top: false,
-        child: NavigationBar(
-          height: 72,
-          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onSelected,
-          destinations: const [
-          NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.house),
-            label: 'হোম',
-          ),
-            NavigationDestination(
-              icon: FaIcon(FontAwesomeIcons.bookOpen),
-              label: 'বই',
-          ),
-          NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.rectangleList),
-            label: 'প্রস্তুতি',
-          ),
-          NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.filePen),
-            label: 'রুটিন',
-          ),
-          NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.user),
-            label: 'প্রোফাইল',
-          ),
-          NavigationDestination(
-            icon: FaIcon(FontAwesomeIcons.wandMagicSparkles),
-            label: 'বিদ্বান AI',
-          ),
+  Widget build(BuildContext context) {
+    if (PersistentFooterScope.isActive(context) && !isPersistent) {
+      return const SizedBox.shrink();
+    }
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE5ECEB))),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x0A00343A),
+              blurRadius: 12,
+              offset: Offset(0, -3),
+            ),
           ],
+        ),
+        padding: const EdgeInsets.fromLTRB(5, 2, 5, 2),
+        child: Row(
+          children: [
+            for (var index = 0; index < _destinations.length; index++)
+              Expanded(
+                child: _FooterNavigationItem(
+                  destination: _destinations[index],
+                  selected: selectedIndex == index,
+                  onTap:
+                      selectedIndex == index ? null : () => onSelected(index),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FooterDestination {
+  const _FooterDestination(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+}
+
+class _FooterNavigationItem extends StatelessWidget {
+  const _FooterNavigationItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _FooterDestination destination;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: destination.label,
+        child: Tooltip(
+          message: destination.label,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 50,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOutCubic,
+                    width: selected ? 42 : 38,
+                    height: 25,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFFDDECEB)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: FaIcon(
+                      destination.icon,
+                      size: 17,
+                      color: selected
+                          ? AppConstants.primary
+                          : const Color(0xFF607477),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  SizedBox(
+                    height: 12,
+                    child: selected
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              destination.label,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: AppConstants.primary,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       );
 }

@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS exam_batches (
 );
 
 ALTER TABLE exam_batches ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE exam_batches ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (price >= 0);
+ALTER TABLE exam_batches ADD COLUMN IF NOT EXISTS demo_exam_ids UUID[] NOT NULL DEFAULT '{}';
 ALTER TABLE exam_batches ADD COLUMN IF NOT EXISTS sort_order INTEGER;
 
 WITH ranked_batches AS (

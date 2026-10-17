@@ -14,7 +14,6 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const _categories = <({String title, IconData icon})>[
-    
     (title: 'BCS প্রস্তুতি', icon: Icons.school),
     (title: 'SSC', icon: Icons.school),
     (title: 'HSC', icon: Icons.account_balance),
@@ -26,7 +25,6 @@ class HomeScreen extends ConsumerWidget {
     (title: 'ব্যাংক জব', icon: Icons.account_balance),
     (title: 'সরকারি চাকরি', icon: Icons.work),
     (title: 'প্রাইমারি', icon: Icons.child_care),
-    
   ];
 
   @override
@@ -36,14 +34,13 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('বিদ্বান'),
+        title: const Text('Bidwaan'),
         actions: [
           if (authState.isLoggedIn)
             IconButton(
               tooltip: 'লগআউট',
               icon: const Icon(Icons.logout),
-              onPressed: () =>
-                  ref.read(authNotifierProvider.notifier).logout(),
+              onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
             ),
         ],
       ),
@@ -80,14 +77,18 @@ class HomeScreen extends ConsumerWidget {
                   }
                   final categories = snapshot.data ?? const <TopicNode>[];
                   if (categories.isEmpty) {
-                    return const Text('এখনো কোনো question bank category যোগ করা হয়নি।');
+                    return const Text(
+                        'এখনো কোনো question bank category যোগ করা হয়নি।');
                   }
                   return _CategoryGrid(
                     categories: [
                       for (final category in categories)
-                        (title: category.name, icon: _categoryIcon(category.name)),
+                        (
+                          title: category.name,
+                          icon: _categoryIcon(category.name)
+                        ),
                     ],
-                    onCategoryTap: (category) => context.go(
+                    onCategoryTap: (category) => context.push(
                       '/subject-catalog?category=${Uri.encodeComponent(category)}',
                     ),
                   );
@@ -98,7 +99,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _CategoryGrid(
                 categories: _categories,
-                onCategoryTap: (category) => context.go(
+                onCategoryTap: (category) => context.push(
                   '/subject-catalog?category=${Uri.encodeComponent(category)}',
                 ),
               ),
@@ -128,7 +129,9 @@ IconData _categoryIcon(String name) {
   if (value.contains('bank')) return Icons.account_balance;
   if (value.contains('job') || value.contains('চাকরি')) return Icons.work;
   if (value.contains('agri')) return Icons.eco;
-  if (value.contains('school') || value.contains('ssc') || value.contains('hsc')) {
+  if (value.contains('school') ||
+      value.contains('ssc') ||
+      value.contains('hsc')) {
     return Icons.school;
   }
   return Icons.menu_book;
@@ -169,9 +172,9 @@ class _AppDrawer extends StatelessWidget {
       onDestinationSelected: (index) {
         Navigator.of(context).pop();
         if (index == 1) {
-          context.go('/biddyan-ai');
+          context.push('/biddyan-ai');
         } else if (index == 5) {
-          context.go('/admin');
+          context.push('/admin');
         } else if (index > 1) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('এই সেকশনটি খুব শীঘ্রই যুক্ত হবে।')),
@@ -185,7 +188,7 @@ class _AppDrawer extends StatelessWidget {
         ),
         NavigationDrawerDestination(
           icon: Icon(Icons.auto_awesome),
-          label: Text('বিদ্বান AI'),
+          label: Text('Bidwaan AI'),
         ),
         NavigationDrawerDestination(
           icon: Icon(Icons.school),
@@ -351,8 +354,8 @@ class _CategoryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 14,
-                  color: AppConstants.mutedText),
+              const Icon(Icons.arrow_forward_ios,
+                  size: 14, color: AppConstants.mutedText),
             ],
           ),
         ),

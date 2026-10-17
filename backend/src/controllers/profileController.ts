@@ -108,7 +108,8 @@ export class ProfileController {
       const result = await pool.query(
         `SELECT id, phone_number, email, display_name, role,
                 profile_image_url, preparation_categories,
-                notifications_enabled, preferred_language
+                notifications_enabled, preferred_language,
+                institution_type, institution_name, location
          FROM users WHERE id = $1`,
         [userId],
       );
@@ -126,7 +127,32 @@ export class ProfileController {
       preparationCategories,
       notificationsEnabled,
       preferredLanguage,
+      email,
+      institutionType,
+      institutionName,
+      location,
     } = req.body;
+    const normalizedEmail = email === undefined ? undefined : String(email).trim().toLowerCase();
+    const normalizedInstitutionType = institutionType === undefined
+      ? undefined
+      : String(institutionType).trim().toLowerCase();
+    const normalizedInstitutionName = institutionName === undefined
+      ? undefined
+      : String(institutionName).trim();
+    const normalizedLocation = location === undefined ? undefined : String(location).trim();
+
+    if (normalizedEmail &&
+        (normalizedEmail.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))) {
+      return res.status(400).json({ error: 'Enter a valid email address' });
+    }
+    if (normalizedInstitutionType !== undefined && normalizedInstitutionType &&
+        !['school', 'college', 'university', 'other'].includes(normalizedInstitutionType)) {
+      return res.status(400).json({ error: 'Choose a valid institution type' });
+    }
+    if ((normalizedInstitutionName?.length ?? 0) > 180 ||
+        (normalizedLocation?.length ?? 0) > 180) {
+      return res.status(400).json({ error: 'Institution and location must be 180 characters or fewer' });
+    }
     if (profileImageUrl != null && String(profileImageUrl).length > 8_000_000) {
       return res.status(413).json({ error: 'Profile picture must be 6 MB or smaller' });
     }
@@ -138,11 +164,16 @@ export class ProfileController {
            profile_image_url = COALESCE($3, profile_image_url),
            preparation_categories = COALESCE($4, preparation_categories),
            notifications_enabled = COALESCE($5, notifications_enabled),
-           preferred_language = COALESCE($6, preferred_language)
+             preferred_language = COALESCE($6, preferred_language),
+             email = CASE WHEN $7 THEN NULLIF($8, '') ELSE email END,
+             institution_type = CASE WHEN $9 THEN NULLIF($10, '') ELSE institution_type END,
+             institution_name = CASE WHEN $11 THEN NULLIF($12, '') ELSE institution_name END,
+             location = CASE WHEN $13 THEN NULLIF($14, '') ELSE location END
          WHERE id = $1
          RETURNING id, phone_number, email, display_name, role,
                    profile_image_url, preparation_categories,
-                   notifications_enabled, preferred_language`,
+               notifications_enabled, preferred_language,
+               institution_type, institution_name, location`,
         [
           userId,
           displayName?.toString().trim() || null,
@@ -150,11 +181,22 @@ export class ProfileController {
           Array.isArray(preparationCategories) ? preparationCategories : null,
           typeof notificationsEnabled === 'boolean' ? notificationsEnabled : null,
           preferredLanguage?.toString() || null,
+          normalizedEmail !== undefined,
+          normalizedEmail ?? null,
+          normalizedInstitutionType !== undefined,
+          normalizedInstitutionType ?? null,
+          normalizedInstitutionName !== undefined,
+          normalizedInstitutionName ?? null,
+          normalizedLocation !== undefined,
+          normalizedLocation ?? null,
         ],
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'Profile not found' });
       return res.status(200).json(result.rows[0]);
     } catch (error: any) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'This email address is already in use' });
+      }
       return res.status(500).json({ error: error.message });
     }
   }

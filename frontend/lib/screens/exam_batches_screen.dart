@@ -107,7 +107,10 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
     final signedIn = ref.watch(authNotifierProvider).user != null;
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(title: const Text('এক্সাম ব্যাচ')),
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: const Text('এক্সাম ব্যাচ'),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
@@ -117,10 +120,13 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
               if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+              if (snapshot.hasError) {
+                return Center(child: Text(snapshot.error.toString()));
+              }
               final batches = snapshot.data ?? const [];
               if (batches.isEmpty) {
-                return const Center(child: Text('এখনো কোনো এক্সাম ব্যাচ প্রকাশ করা হয়নি।'));
+                return const Center(
+                    child: Text('এখনো কোনো এক্সাম ব্যাচ প্রকাশ করা হয়নি।'));
               }
               return FutureBuilder<List<TopicNode>>(
                 future: _topics,
@@ -149,7 +155,10 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
                               children: [
                                 Text(
                                   'ব্যাচ খুঁজুন',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                                 const SizedBox(height: 2),
                                 const Text('বিষয় ও প্রশ্নের ধরন বেছে নিন'),
@@ -157,14 +166,18 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: AppConstants.primary.withValues(alpha: 0.08),
+                              color:
+                                  AppConstants.primary.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               '${filteredBatches.length}টি ব্যাচ',
-                              style: const TextStyle(color: AppConstants.primary, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                  color: AppConstants.primary,
+                                  fontWeight: FontWeight.w700),
                             ),
                           ),
                         ],
@@ -176,14 +189,17 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
                         selectedTopicType: _selectedExamType,
                         selectedQuestionType: _selectedQuestionType,
                         resultCount: filteredBatches.length,
-                        onTopicSelected: (type) => setState(() => _selectedExamType = type),
-                        onQuestionTypeSelected: (type) => setState(() => _selectedQuestionType = type),
+                        onTopicSelected: (type) =>
+                            setState(() => _selectedExamType = type),
+                        onQuestionTypeSelected: (type) =>
+                            setState(() => _selectedQuestionType = type),
                       ),
                       const SizedBox(height: 16),
                       if (filteredBatches.isEmpty)
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 32),
                           decoration: BoxDecoration(
                             color: AppConstants.surface,
                             borderRadius: BorderRadius.circular(16),
@@ -191,12 +207,20 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.manage_search, size: 34, color: AppConstants.mutedText.withValues(alpha: 0.8)),
+                              Icon(Icons.manage_search,
+                                  size: 34,
+                                  color: AppConstants.mutedText
+                                      .withValues(alpha: 0.8)),
                               const SizedBox(height: 10),
-                              const Text('এই ফিল্টারে কোনো ব্যাচ পাওয়া যায়নি', style: TextStyle(fontWeight: FontWeight.w700)),
+                              const Text('এই ফিল্টারে কোনো ব্যাচ পাওয়া যায়নি',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w700)),
                               const SizedBox(height: 4),
-                              const Text('অন্য বিষয় বা প্রশ্নের ধরন বেছে দেখুন।', textAlign: TextAlign.center),
-                              if (_selectedExamType != 'সব' || _selectedQuestionType != 'সব') ...[
+                              const Text(
+                                  'অন্য বিষয় বা প্রশ্নের ধরন বেছে দেখুন।',
+                                  textAlign: TextAlign.center),
+                              if (_selectedExamType != 'সব' ||
+                                  _selectedQuestionType != 'সব') ...[
                                 const SizedBox(height: 12),
                                 TextButton.icon(
                                   onPressed: () => setState(() {
@@ -213,7 +237,8 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
                       for (final batch in filteredBatches)
                         _PublicBatchCard(
                           batch: batch,
-                          onTap: () => context.push('/exam-batches/${batch['id']}'),
+                          onTap: () =>
+                              context.push('/exam-batches/${batch['id']}'),
                         ),
                       if (!signedIn)
                         Padding(
@@ -221,7 +246,7 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () => context.push('/account'),
                             icon: const Icon(Icons.login),
-                            label: const Text('ফ্রি enrollment করতে sign in করুন'),
+                            label: const Text('ব্যাচে যোগ দিতে sign in করুন'),
                           ),
                         ),
                     ],
@@ -241,13 +266,15 @@ class _ExamBatchesScreenState extends ConsumerState<ExamBatchesScreen> {
 }
 
 class ExamBatchDetailScreen extends ConsumerStatefulWidget {
-  const ExamBatchDetailScreen({super.key, required this.batchId, this.autoEnroll = false});
+  const ExamBatchDetailScreen(
+      {super.key, required this.batchId, this.autoEnroll = false});
 
   final String batchId;
   final bool autoEnroll;
 
   @override
-  ConsumerState<ExamBatchDetailScreen> createState() => _ExamBatchDetailScreenState();
+  ConsumerState<ExamBatchDetailScreen> createState() =>
+      _ExamBatchDetailScreenState();
 }
 
 class _ExamBatchDetailScreenState extends ConsumerState<ExamBatchDetailScreen> {
@@ -272,35 +299,67 @@ class _ExamBatchDetailScreenState extends ConsumerState<ExamBatchDetailScreen> {
 
   Future<void> _enroll() async {
     if (ref.read(authNotifierProvider).user == null) {
-      final destination = Uri.encodeComponent('/exam-batches/${widget.batchId}?enroll=1');
+      final destination =
+          Uri.encodeComponent('/exam-batches/${widget.batchId}?enroll=1');
       await context.push('/account?redirect=$destination');
       return;
     }
     setState(() => _enrolling = true);
     try {
       await ExamService(apiClient).enrollInBatch(widget.batchId);
-      setState(() => _details = ExamService(apiClient).batchDetails(widget.batchId));
+      setState(
+          () => _details = ExamService(apiClient).batchDetails(widget.batchId));
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     } finally {
       if (mounted) setState(() => _enrolling = false);
     }
+  }
+
+  Future<void> _payNow() async {
+    if (ref.read(authNotifierProvider).user == null) {
+      final destination = Uri.encodeComponent(
+        '/exam-batches/${widget.batchId}/pay',
+      );
+      await context.push('/account?redirect=$destination');
+      return;
+    }
+    await context.push('/exam-batches/${widget.batchId}/pay');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppConstants.background,
-      appBar: AppBar(title: const Text('ব্যাচের পরীক্ষা')),
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: const Text('ব্যাচের পরীক্ষা'),
+      ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _details,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text(snapshot.error.toString()));
+          }
           final batch = snapshot.data!;
           final enrolled = batch['is_enrolled'] == true;
+          final price = double.tryParse(batch['price']?.toString() ?? '') ?? 0;
+          final paymentRequest =
+              batch['payment_request'] as Map<String, dynamic>?;
+          final paymentStatus = paymentRequest?['status']?.toString();
+          final demoExamIds =
+              (batch['demo_exam_ids'] as List<dynamic>? ?? const [])
+                  .map((id) => id.toString())
+                  .toSet();
           final exams = (batch['exams'] as List<dynamic>? ?? const [])
-              .map((item) => Map<String, dynamic>.from(item as Map)).toList();
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
@@ -315,27 +374,76 @@ class _ExamBatchDetailScreenState extends ConsumerState<ExamBatchDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  Text(batch['name'] as String? ?? '', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(batch['name'] as String? ?? '',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 4),
-                  Text('${batch['exam_type'] ?? ''}  •  ${batch['enrolled_count'] ?? 0} জন শিক্ষার্থী'),
+                  Text(
+                      '${batch['exam_type'] ?? ''}  •  ${batch['enrolled_count'] ?? 0} জন শিক্ষার্থী'),
+                  const SizedBox(height: 8),
+                  Text(price > 0
+                      ? 'কোর্স মূল্য: ${_formatPrice(price)}'
+                      : 'ফ্রি ব্যাচ'),
                   if ((batch['description'] as String? ?? '').isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(batch['description'] as String),
                   ],
                   const SizedBox(height: 16),
-                  if (!enrolled)
+                  if (!enrolled && price > 0 && paymentStatus == 'pending')
+                    const ListTile(
+                      leading:
+                          Icon(Icons.hourglass_top, color: AppConstants.golden),
+                      title: Text('পেমেন্ট যাচাই চলছে'),
+                      subtitle: Text(
+                          'Admin যাচাই করে approve করলে batch-এ যুক্ত হবেন।'),
+                    )
+                  else if (!enrolled && price > 0)
+                    FilledButton.icon(
+                      onPressed: _enrolling ? null : _payNow,
+                      icon: const Icon(Icons.lock_open),
+                      label: Text(paymentStatus == 'failed'
+                          ? 'আবার Pay করুন • ${_formatPrice(price)}'
+                          : 'Pay Now • ${_formatPrice(price)}'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppConstants.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    )
+                  else if (!enrolled)
                     FilledButton.icon(
                       onPressed: _enrolling ? null : _enroll,
-                      icon: _enrolling ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.add),
+                      icon: _enrolling
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.add),
                       label: const Text('বিনামূল্যে ব্যাচে যোগ দিন'),
                     )
                   else
-                    const Chip(avatar: Icon(Icons.verified, size: 18), label: Text('আপনি এই ব্যাচে enrolled')),
+                    const Chip(
+                        avatar: Icon(Icons.verified, size: 18),
+                        label: Text('আপনি এই ব্যাচে enrolled')),
                   const SizedBox(height: 20),
-                  Text('ব্যাচের পরীক্ষাসমূহ', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  Text('ব্যাচের পরীক্ষাসমূহ',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 10),
-                  if (exams.isEmpty) const Text('এই ব্যাচে এখনো কোনো পরীক্ষা যোগ করা হয়নি।'),
-                  for (final exam in exams) _BatchExamTile(exam: exam, enrolled: enrolled),
+                  if (exams.isEmpty)
+                    const Text('এই ব্যাচে এখনো কোনো পরীক্ষা যোগ করা হয়নি।'),
+                  for (final exam in exams)
+                    _BatchExamTile(
+                      exam: exam,
+                      enrolled: enrolled,
+                      isDemo: demoExamIds.contains(exam['id']?.toString()),
+                    ),
                 ],
               ),
             ),
@@ -351,10 +459,12 @@ class _ExamBatchDetailScreenState extends ConsumerState<ExamBatchDetailScreen> {
 }
 
 class _BatchExamTile extends StatelessWidget {
-  const _BatchExamTile({required this.exam, required this.enrolled});
+  const _BatchExamTile(
+      {required this.exam, required this.enrolled, required this.isDemo});
 
   final Map<String, dynamic> exam;
   final bool enrolled;
+  final bool isDemo;
 
   @override
   Widget build(BuildContext context) {
@@ -362,15 +472,24 @@ class _BatchExamTile extends StatelessWidget {
     final endsAt = DateTime.parse(exam['ends_at'] as String).toLocal();
     final now = DateTime.now();
     final live = !now.isBefore(startsAt) && now.isBefore(endsAt);
-    final state = now.isBefore(startsAt) ? 'আসন্ন' : live ? 'এখন চলছে' : 'সময় শেষ';
+    final state = now.isBefore(startsAt)
+        ? 'আসন্ন'
+        : live
+            ? 'এখন চলছে'
+            : 'সময় শেষ';
     return Card(
       margin: const EdgeInsets.only(bottom: 9),
       child: ListTile(
-        title: Text(exam['title'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text('${_formatDate(startsAt)}  •  ${exam['duration_minutes']} মিনিট  •  ${exam['question_count']} প্রশ্ন\n$state'),
+        title: Text(
+            '${exam['title'] as String? ?? ''}${isDemo ? '  •  DEMO' : ''}',
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(
+            '${_formatDate(startsAt)}  •  ${exam['duration_minutes']} মিনিট  •  ${exam['question_count']} প্রশ্ন\n$state'),
         isThreeLine: true,
-        trailing: live && enrolled
-            ? FilledButton(onPressed: () => context.push('/exam/${exam['id']}'), child: const Text('পরীক্ষা দিন'))
+        trailing: live && (enrolled || isDemo)
+            ? FilledButton(
+                onPressed: () => context.push('/exam/${exam['id']}'),
+                child: Text(isDemo && !enrolled ? 'Demo দিন' : 'পরীক্ষা দিন'))
             : const Icon(Icons.schedule),
       ),
     );
@@ -379,6 +498,14 @@ class _BatchExamTile extends StatelessWidget {
 
 String _formatDate(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+String _formatPrice(double price) =>
+    '৳${price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2)}';
+
+String _batchPriceLabel(Map<String, dynamic> batch) {
+  final price = double.tryParse(batch['price']?.toString() ?? '') ?? 0;
+  return price > 0 ? _formatPrice(price) : 'Free';
+}
 
 class AdminExamBatchesScreen extends StatefulWidget {
   const AdminExamBatchesScreen({super.key});
@@ -413,7 +540,8 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
     if (!mounted) return;
     final created = await showDialog<bool>(
       context: context,
-      builder: (context) => _CreateExamBatchDialog(exams: exams, examTypes: examTypes),
+      builder: (context) =>
+          _CreateExamBatchDialog(exams: exams, examTypes: examTypes),
     );
     if (created == true && mounted) setState(_load);
   }
@@ -462,7 +590,8 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
     final reorderedVisible = [...visibleBatches];
     final movedBatch = reorderedVisible.removeAt(oldIndex);
     reorderedVisible.insert(newIndex, movedBatch);
-    final visibleIds = reorderedVisible.map((batch) => batch['id'].toString()).toSet();
+    final visibleIds =
+        reorderedVisible.map((batch) => batch['id'].toString()).toSet();
     final positions = <int>[
       for (var index = 0; index < batches.length; index++)
         if (visibleIds.contains(batches[index]['id'].toString())) index,
@@ -488,12 +617,19 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('এক্সাম ব্যাচ পরিচালনা')),
+        appBar: AppBar(
+          leading: const AppBackButton(),
+          title: const Text('এক্সাম ব্যাচ পরিচালনা'),
+        ),
         body: FutureBuilder<List<Map<String, dynamic>>>(
           future: _batches,
           builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-            if (snapshot.hasError) return Center(child: Text(snapshot.error.toString()));
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text(snapshot.error.toString()));
+            }
             final batches = _orderedBatches ?? snapshot.data ?? const [];
             return FutureBuilder<List<TopicNode>>(
               future: _topics,
@@ -512,7 +648,8 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
                       batches,
                     );
                     final filtered = batches
-                        .where((batch) => _matchesBatchType(batch, _selectedExamType))
+                        .where((batch) =>
+                            _matchesBatchType(batch, _selectedExamType))
                         .toList();
                     return Column(
                       children: [
@@ -539,7 +676,8 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
                                   child: ChoiceChip(
                                     label: Text(type),
                                     selected: _selectedExamType == type,
-                                    onSelected: (_) => setState(() => _selectedExamType = type),
+                                    onSelected: (_) => setState(
+                                        () => _selectedExamType = type),
                                   ),
                                 ),
                             ],
@@ -548,14 +686,18 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
                         const SizedBox(height: 8),
                         Expanded(
                           child: batches.isEmpty
-                              ? const Center(child: Text('কোনো exam batch তৈরি হয়নি।'))
+                              ? const Center(
+                                  child: Text('কোনো exam batch তৈরি হয়নি।'))
                               : filtered.isEmpty
-                                  ? const Center(child: Text('এই ধরনের কোনো exam batch নেই।'))
+                                  ? const Center(
+                                      child:
+                                          Text('এই ধরনের কোনো exam batch নেই।'))
                                   : ReorderableListView.builder(
                                       padding: const EdgeInsets.all(16),
                                       buildDefaultDragHandles: false,
                                       itemCount: filtered.length,
-                                      onReorder: (oldIndex, newIndex) => _reorderBatches(
+                                      onReorder: (oldIndex, newIndex) =>
+                                          _reorderBatches(
                                         batches,
                                         filtered,
                                         oldIndex,
@@ -565,11 +707,19 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
                                         final batch = filtered[index];
                                         return Card(
                                           key: ValueKey(batch['id'].toString()),
-                                          margin: const EdgeInsets.only(bottom: 10),
+                                          margin:
+                                              const EdgeInsets.only(bottom: 10),
                                           child: ListTile(
-                                            leading: _BatchImage(imageUrl: batch['image_url'] as String?),
-                                            title: Text(batch['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                                            subtitle: Text('${batch['exam_type'] ?? ''}  •  ${batch['exam_count'] ?? 0}টি পরীক্ষা  •  ${batch['enrolled_count'] ?? 0} জন enrolled'),
+                                            leading: _BatchImage(
+                                                imageUrl: batch['image_url']
+                                                    as String?),
+                                            title: Text(
+                                                batch['name'] as String? ?? '',
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.w700)),
+                                            subtitle: Text(
+                                                '${batch['exam_type'] ?? ''}  •  ${batch['exam_count'] ?? 0}টি পরীক্ষা  •  ${batch['enrolled_count'] ?? 0} জন enrolled  •  ${_batchPriceLabel(batch)}'),
                                             trailing: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
@@ -577,16 +727,21 @@ class _AdminExamBatchesScreenState extends State<AdminExamBatchesScreen> {
                                                   tooltip: 'সম্পাদনা',
                                                   onPressed: () => _editBatch(
                                                     batch,
-                                                    examSnapshot.data ?? const [],
+                                                    examSnapshot.data ??
+                                                        const [],
                                                     examTypes.skip(1).toList(),
                                                   ),
-                                                  icon: const Icon(Icons.edit_outlined),
+                                                  icon: const Icon(
+                                                      Icons.edit_outlined),
                                                 ),
                                                 ReorderableDragStartListener(
                                                   index: index,
                                                   child: const Padding(
-                                                    padding: EdgeInsets.symmetric(horizontal: 8),
-                                                    child: Icon(Icons.drag_handle),
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            horizontal: 8),
+                                                    child:
+                                                        Icon(Icons.drag_handle),
                                                   ),
                                                 ),
                                               ],
@@ -625,11 +780,14 @@ class _CreateExamBatchDialog extends StatefulWidget {
 class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
   final _name = TextEditingController();
   final _description = TextEditingController();
+  final _price = TextEditingController();
   String _type = _dashboardExamTypes.first;
   Exam? _selectedExam;
   DateTime _scheduledAt = DateTime.now().add(const Duration(days: 1));
   final List<Map<String, String>> _scheduledExams = [];
   String? _imageUrl;
+  bool _isPaid = false;
+  final Set<String> _demoExamIds = {};
   bool _saving = false;
 
   @override
@@ -641,6 +799,13 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
     _description.text = batch['description'] as String? ?? '';
     _type = batch['exam_type'] as String? ?? _type;
     _imageUrl = batch['image_url'] as String?;
+    final batchPrice = double.tryParse(batch['price']?.toString() ?? '') ?? 0;
+    _isPaid = batchPrice > 0;
+    _price.text = batchPrice > 0 ? batchPrice.toString() : '';
+    _demoExamIds.addAll(
+      (batch['demo_exam_ids'] as List<dynamic>? ?? const [])
+          .map((id) => id.toString()),
+    );
     for (final item in batch['exams'] as List<dynamic>? ?? const []) {
       final exam = Map<String, dynamic>.from(item as Map);
       final examId = (exam['id'] ?? exam['exam_id'])?.toString() ?? '';
@@ -668,7 +833,8 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
         'gif' => 'gif',
         _ => 'jpeg',
       };
-      setState(() => _imageUrl = 'data:image/$mimeType;base64,${base64Encode(bytes)}');
+      setState(() =>
+          _imageUrl = 'data:image/$mimeType;base64,${base64Encode(bytes)}');
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -686,13 +852,22 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
     );
     if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_scheduledAt));
+    final time = await showTimePicker(
+        context: context, initialTime: TimeOfDay.fromDateTime(_scheduledAt));
     if (time == null) return;
-    setState(() => _scheduledAt = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    setState(() => _scheduledAt =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty || _scheduledExams.isEmpty) return;
+    final price = _isPaid ? double.tryParse(_price.text.trim()) : 0.0;
+    if (price == null || price < 0 || (_isPaid && price == 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paid ব্যাচের জন্য সঠিক মূল্য লিখুন।')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       final service = ExamService(apiClient);
@@ -700,6 +875,8 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
         'name': _name.text.trim(),
         'examType': _type,
         'description': _description.text.trim(),
+        'price': price,
+        'demoExamIds': _demoExamIds.toList(),
         'imageUrl': _imageUrl,
         'exams': _scheduledExams,
       };
@@ -709,6 +886,8 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
           name: values['name']! as String,
           examType: values['examType']! as String,
           description: values['description']! as String,
+          price: values['price']! as double,
+          demoExamIds: values['demoExamIds']! as List<String>,
           imageUrl: values['imageUrl'] as String?,
           exams: values['exams']! as List<Map<String, String>>,
         );
@@ -718,13 +897,18 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
           name: values['name']! as String,
           examType: values['examType']! as String,
           description: values['description']! as String,
+          price: values['price']! as double,
+          demoExamIds: values['demoExamIds']! as List<String>,
           imageUrl: values['imageUrl'] as String?,
           exams: values['exams']! as List<Map<String, String>>,
         );
       }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -732,7 +916,8 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: Text(widget.initialBatch == null ? 'নতুন exam batch' : 'ব্যাচ সম্পাদনা'),
+        title: Text(
+            widget.initialBatch == null ? 'নতুন exam batch' : 'ব্যাচ সম্পাদনা'),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
@@ -740,7 +925,30 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(controller: _name, decoration: const InputDecoration(labelText: 'ব্যাচের নাম')),
+                TextField(
+                    controller: _name,
+                    decoration:
+                        const InputDecoration(labelText: 'ব্যাচের নাম')),
+                const SizedBox(height: 12),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Free')),
+                    ButtonSegment(value: true, label: Text('Paid')),
+                  ],
+                  selected: {_isPaid},
+                  onSelectionChanged: (selection) =>
+                      setState(() => _isPaid = selection.first),
+                ),
+                if (_isPaid) ...[
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _price,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                        labelText: 'Custom price (৳)', prefixText: '৳ '),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -753,11 +961,15 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
                           OutlinedButton.icon(
                             onPressed: _saving ? null : _pickImage,
                             icon: const Icon(Icons.image_outlined),
-                            label: Text(_imageUrl == null ? 'ছবি আপলোড করুন' : 'ছবি পরিবর্তন করুন'),
+                            label: Text(_imageUrl == null
+                                ? 'ছবি আপলোড করুন'
+                                : 'ছবি পরিবর্তন করুন'),
                           ),
                           if (_imageUrl != null)
                             TextButton.icon(
-                              onPressed: _saving ? null : () => setState(() => _imageUrl = null),
+                              onPressed: _saving
+                                  ? null
+                                  : () => setState(() => _imageUrl = null),
                               icon: const Icon(Icons.delete_outline),
                               label: const Text('ছবি সরান'),
                             ),
@@ -770,33 +982,55 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
                 DropdownButtonFormField<String>(
                   value: _type,
                   decoration: const InputDecoration(labelText: 'পরীক্ষার ধরন'),
-                  items: [for (final type in widget.examTypes) DropdownMenuItem(value: type, child: Text(type))],
-                  onChanged: (value) => setState(() => _type = value ?? widget.examTypes.first),
+                  items: [
+                    for (final type in widget.examTypes)
+                      DropdownMenuItem(value: type, child: Text(type))
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _type = value ?? widget.examTypes.first),
                 ),
                 const SizedBox(height: 10),
-                TextField(controller: _description, maxLines: 2, decoration: const InputDecoration(labelText: 'বর্ণনা')),
+                TextField(
+                    controller: _description,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'বর্ণনা')),
                 const Divider(height: 28),
                 DropdownButtonFormField<Exam>(
                   value: _selectedExam,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'ব্যাচে পরীক্ষা যোগ করুন'),
+                  decoration: const InputDecoration(
+                      labelText: 'ব্যাচে পরীক্ষা যোগ করুন'),
                   items: [
-                    for (final exam in widget.exams.where((exam) => !_scheduledExams.any((item) => item['examId'] == exam.id)))
-                      DropdownMenuItem(value: exam, child: Text(exam.title, overflow: TextOverflow.ellipsis)),
+                    for (final exam in widget.exams.where((exam) =>
+                        !_scheduledExams
+                            .any((item) => item['examId'] == exam.id)))
+                      DropdownMenuItem(
+                          value: exam,
+                          child: Text(exam.title,
+                              overflow: TextOverflow.ellipsis)),
                   ],
                   onChanged: (value) => setState(() => _selectedExam = value),
                 ),
                 const SizedBox(height: 8),
-                OutlinedButton.icon(onPressed: _pickSchedule, icon: const Icon(Icons.calendar_month), label: Text(_formatDate(_scheduledAt))),
+                OutlinedButton.icon(
+                    onPressed: _pickSchedule,
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(_formatDate(_scheduledAt))),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
-                    onPressed: _selectedExam == null ? null : () {
-                      setState(() {
-                        _scheduledExams.add({'examId': _selectedExam!.id, 'startsAt': _scheduledAt.toUtc().toIso8601String()});
-                        _selectedExam = null;
-                      });
-                    },
+                    onPressed: _selectedExam == null
+                        ? null
+                        : () {
+                            setState(() {
+                              _scheduledExams.add({
+                                'examId': _selectedExam!.id,
+                                'startsAt':
+                                    _scheduledAt.toUtc().toIso8601String()
+                              });
+                              _selectedExam = null;
+                            });
+                          },
                     icon: const Icon(Icons.add),
                     label: const Text('তালিকায় যোগ করুন'),
                   ),
@@ -804,21 +1038,64 @@ class _CreateExamBatchDialogState extends State<_CreateExamBatchDialog> {
                 for (var index = 0; index < _scheduledExams.length; index++)
                   ListTile(
                     dense: true,
-                    title: Text(widget.exams.firstWhere((exam) => exam.id == _scheduledExams[index]['examId']).title),
-                    subtitle: Text(_formatDate(DateTime.parse(_scheduledExams[index]['startsAt']!).toLocal())),
-                    trailing: IconButton(tooltip: 'সরান', onPressed: () => setState(() => _scheduledExams.removeAt(index)), icon: const Icon(Icons.close)),
+                    title: Text(widget.exams
+                        .firstWhere((exam) =>
+                            exam.id == _scheduledExams[index]['examId'])
+                        .title),
+                    subtitle: Text(_formatDate(
+                        DateTime.parse(_scheduledExams[index]['startsAt']!)
+                            .toLocal())),
+                    trailing: IconButton(
+                      tooltip: 'সরান',
+                      onPressed: () => setState(() {
+                        _demoExamIds.remove(_scheduledExams[index]['examId']);
+                        _scheduledExams.removeAt(index);
+                      }),
+                      icon: const Icon(Icons.close),
+                    ),
                   ),
+                if (_isPaid && _scheduledExams.isNotEmpty) ...[
+                  const Divider(height: 24),
+                  const Text('Paid course-এ কোন পরীক্ষাগুলো demo থাকবে?'),
+                  for (final scheduled in _scheduledExams)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _demoExamIds.contains(scheduled['examId']),
+                      title: Text(
+                        widget.exams
+                            .firstWhere(
+                                (exam) => exam.id == scheduled['examId'])
+                            .title,
+                      ),
+                      subtitle:
+                          const Text('Payment ছাড়াই demo হিসেবে খোলা থাকবে'),
+                      onChanged: (selected) => setState(() {
+                        final id = scheduled['examId']!;
+                        if (selected == true) {
+                          _demoExamIds.add(id);
+                        } else {
+                          _demoExamIds.remove(id);
+                        }
+                      }),
+                    ),
+                ],
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: _saving ? null : () => Navigator.pop(context, false), child: const Text('বাতিল')),
+          TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(context, false),
+              child: const Text('বাতিল')),
           FilledButton(
             onPressed: _saving ? null : _save,
             child: _saving
-                ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(widget.initialBatch == null ? 'ব্যাচ তৈরি করুন' : 'পরিবর্তন সংরক্ষণ'),
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Text(widget.initialBatch == null
+                    ? 'ব্যাচ তৈরি করুন'
+                    : 'পরিবর্তন সংরক্ষণ'),
           ),
         ],
       );
@@ -851,7 +1128,8 @@ class _BatchFilterPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE0E8E7)),
           boxShadow: const [
-            BoxShadow(color: Color(0x0800343A), blurRadius: 12, offset: Offset(0, 4)),
+            BoxShadow(
+                color: Color(0x0800343A), blurRadius: 12, offset: Offset(0, 4)),
           ],
         ),
         child: Column(
@@ -862,11 +1140,13 @@ class _BatchFilterPanel extends StatelessWidget {
                 const Icon(Icons.tune, size: 18, color: AppConstants.primary),
                 const SizedBox(width: 8),
                 const Expanded(
-                  child: Text('ফিল্টার', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: Text('ফিল্টার',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 Text(
                   '$resultCountটি ফলাফল',
-                  style: const TextStyle(color: AppConstants.mutedText, fontSize: 12),
+                  style: const TextStyle(
+                      color: AppConstants.mutedText, fontSize: 12),
                 ),
               ],
             ),
@@ -917,7 +1197,9 @@ class _BatchFilterGroup extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: AppConstants.mutedText),
               const SizedBox(width: 6),
-              Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 8),
@@ -935,16 +1217,23 @@ class _BatchFilterGroup extends StatelessWidget {
                       onSelected: (_) => onSelected(option),
                       showCheckmark: false,
                       labelStyle: TextStyle(
-                        color: selected == option ? AppConstants.primary : AppConstants.mutedText,
-                        fontWeight: selected == option ? FontWeight.w700 : FontWeight.w500,
+                        color: selected == option
+                            ? AppConstants.primary
+                            : AppConstants.mutedText,
+                        fontWeight: selected == option
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         fontSize: 13,
                       ),
                       selectedColor: const Color(0xFFDCEDEC),
                       backgroundColor: const Color(0xFFF4F7F6),
                       side: BorderSide(
-                        color: selected == option ? const Color(0xFFB9D7D4) : const Color(0xFFE3EAE9),
+                        color: selected == option
+                            ? const Color(0xFFB9D7D4)
+                            : const Color(0xFFE3EAE9),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -965,6 +1254,8 @@ class _PublicBatchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description = (batch['description'] as String? ?? '').trim();
+    final price = double.tryParse(batch['price']?.toString() ?? '') ?? 0;
+    final demoCount = (batch['demo_exam_ids'] as Iterable? ?? const []).length;
     final questionTypes = (batch['question_types'] as Iterable? ?? const [])
         .map((type) => type.toString().toLowerCase())
         .toSet();
@@ -983,7 +1274,10 @@ class _PublicBatchCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _BatchImage(imageUrl: batch['image_url'] as String?, width: 62, height: 62),
+              _BatchImage(
+                  imageUrl: batch['image_url'] as String?,
+                  width: 62,
+                  height: 62),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -996,7 +1290,10 @@ class _PublicBatchCard extends StatelessWidget {
                             batch['name'] as String? ?? '',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppConstants.primary),
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppConstants.primary),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1009,7 +1306,10 @@ class _PublicBatchCard extends StatelessWidget {
                         description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: AppConstants.mutedText, height: 1.3),
+                        style: const TextStyle(
+                            fontSize: 13,
+                            color: AppConstants.mutedText,
+                            height: 1.3),
                       ),
                     ],
                     const SizedBox(height: 10),
@@ -1025,15 +1325,103 @@ class _PublicBatchCard extends StatelessWidget {
                           icon: Icons.groups_outlined,
                           label: '${batch['enrolled_count'] ?? 0} জন',
                         ),
+                        _BatchMetric(
+                          icon: price > 0
+                              ? Icons.payments_outlined
+                              : Icons.check_circle_outline,
+                          label: price > 0 ? _formatPrice(price) : 'Free',
+                        ),
+                        if (demoCount > 0)
+                          _BatchMetric(
+                            icon: Icons.play_circle_outline,
+                            label: '$demoCountটি Demo',
+                          ),
                         for (final type in questionTypes)
-                          _BatchTag(label: type == 'mcq' ? 'MCQ' : type == 'written' ? 'Written' : type.toUpperCase()),
+                          _BatchTag(
+                              label: type == 'mcq'
+                                  ? 'MCQ'
+                                  : type == 'written'
+                                      ? 'Written'
+                                      : type.toUpperCase()),
                       ],
                     ),
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.only(left: 8, top: 8),
+                child: Material(
+                  color:
+                      price > 0 ? AppConstants.accent : const Color(0xFFE7F7F2),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: 118,
+                      height: 48,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: price > 0
+                              ? [
+                                  const Icon(Icons.payments_outlined,
+                                      size: 16, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Pay ${_formatPrice(price)}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          height: 1.1,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const Text(
+                                        'to Enroll',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          height: 1.1,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ]
+                              : [
+                                  const Icon(Icons.check_circle_outline,
+                                      size: 16, color: Color(0xFF0E7A66)),
+                                  const SizedBox(width: 5),
+                                  const Flexible(
+                                    child: Text(
+                                      'Free Enroll',
+                                      maxLines: 2,
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        height: 1.1,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0E7A66),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               const Padding(
-                padding: EdgeInsets.only(left: 6, top: 20),
+                padding: EdgeInsets.only(left: 4, top: 20),
                 child: Icon(Icons.chevron_right, color: AppConstants.mutedText),
               ),
             ],
@@ -1062,7 +1450,9 @@ class _BatchMetric extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: AppConstants.primary),
             const SizedBox(width: 5),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11, color: AppConstants.mutedText)),
           ],
         ),
       );
@@ -1085,7 +1475,10 @@ class _BatchTag extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppConstants.primary),
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppConstants.primary),
         ),
       );
 }
@@ -1111,7 +1504,10 @@ class _BatchImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = imageUrl?.trim() ?? '';
-    if (value.isEmpty) return ClipRRect(borderRadius: BorderRadius.circular(10), child: _placeholder());
+    if (value.isEmpty) {
+      return ClipRRect(
+          borderRadius: BorderRadius.circular(10), child: _placeholder());
+    }
 
     Widget image;
     if (value.startsWith('data:image/')) {

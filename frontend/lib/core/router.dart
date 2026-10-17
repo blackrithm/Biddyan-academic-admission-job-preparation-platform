@@ -8,11 +8,15 @@ import '../screens/admin_screen.dart';
 import '../screens/admin_management_pages.dart';
 import '../screens/exam_calendar_screen.dart';
 import '../screens/exam_batches_screen.dart';
+import '../screens/exam_batch_payment_screen.dart';
+import '../screens/admin_exam_batch_payments_screen.dart';
+import '../screens/profile_settings_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/exam_room_screen.dart';
 import '../screens/exam_read_mode_screen.dart';
 import '../screens/exam_participants_screen.dart';
 import '../screens/mobile_dashboard.dart';
+import '../screens/notifications_screen.dart';
 import '../screens/result_screen.dart';
 import '../screens/subject_practice_screen.dart';
 import '../screens/written_practice_screen.dart';
@@ -23,6 +27,7 @@ import '../screens/biddyan_ai_screen.dart';
 import '../screens/books_screen.dart';
 import '../screens/routine_screen.dart';
 import '../services/services.dart';
+import '../widgets/brand_navigation.dart';
 
 /// Declarative GoRouter configuration.
 ///
@@ -31,145 +36,256 @@ import '../services/services.dart';
 final router = GoRouter(
   initialLocation: '/',
   routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (context, state) => _HomeGate(
-        showNotices: state.uri.queryParameters['notice'] == '1',
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) => _ApplicationShell(
+        navigationShell: navigationShell,
       ),
-    ),
-    GoRoute(
-      path: '/exam/:examId',
-      builder: (context, state) =>
-          _ExamGate(examId: state.pathParameters['examId']!),
-    ),
-    GoRoute(
-      path: '/exam/:examId/read',
-      builder: (context, state) => ExamReadModeScreen(
-        examId: state.pathParameters['examId']!,
-      ),
-    ),
-    GoRoute(
-      path: '/result/:attemptId',
-      builder: (context, state) =>
-          ResultScreen(attemptId: state.pathParameters['attemptId']!),
-    ),
-    GoRoute(
-      path: '/exam/:examId/participants',
-      builder: (context, state) => ExamParticipantsScreen(
-        examId: state.pathParameters['examId']!,
-      ),
-    ),
-    GoRoute(
-      path: '/admin',
-      builder: (context, state) => const _AdminGate(),
-    ),
-    GoRoute(
-      path: '/admin/exams',
-      builder: (context, state) => const _AdminSectionGate(child: AdminExamManagementPage()),
-    ),
-    GoRoute(
-      path: '/admin/exam-batches',
-      builder: (context, state) => const _AdminSectionGate(child: AdminExamBatchesScreen()),
-    ),
-    GoRoute(
-      path: '/admin/media',
-      builder: (context, state) => const _AdminSectionGate(child: AdminMediaPage()),
-    ),
-    GoRoute(
-      path: '/admin/mcqs',
-      builder: (context, state) => const _AdminSectionGate(child: AdminMcqPage()),
-    ),
-    GoRoute(
-      path: '/admin/notifications',
-      builder: (context, state) => const _AdminSectionGate(child: AdminNotificationsPage()),
-    ),
-    GoRoute(
-      path: '/admin/materials',
-      builder: (context, state) => const _AdminSectionGate(child: AdminMaterialsPage()),
-    ),
-    GoRoute(
-      path: '/admin/question-bank',
-      builder: (context, state) => const _AdminSectionGate(child: AdminQuestionBankPage()),
-    ),
-    GoRoute(
-      path: '/admin/results',
-      builder: (context, state) => const _AdminSectionGate(child: AdminResultsPage()),
-    ),
-    GoRoute(
-      path: '/subject-practice',
-      builder: (context, state) => SubjectPracticeScreen(
-        topicId: state.uri.queryParameters['topicId'],
-        topicName: state.uri.queryParameters['topicName'],
-        showAll: state.uri.queryParameters['mode'] == 'all',
-      ),
-    ),
-    GoRoute(
-      path: '/written-practice',
-      builder: (context, state) => WrittenPracticeScreen(
-        topicId: state.uri.queryParameters['topicId'] ?? '',
-        topicName: state.uri.queryParameters['topicName'] ?? 'Written প্রশ্ন',
-        setId: state.uri.queryParameters['setId'],
-        startInExamMode: state.uri.queryParameters['mode'] == 'exam',
-      ),
-    ),
-    GoRoute(
-      path: '/subject-catalog',
-      builder: (context, state) => SubjectCatalogScreen(
-        categoryName: state.uri.queryParameters['category'],
-        createExam: state.uri.queryParameters['create'] == '1',
-      ),
-    ),
-    GoRoute(
-      path: '/preparation',
-      builder: (context, state) => const PreparationScreen(),
-    ),
-    GoRoute(
-      path: '/books',
-      builder: (context, state) => const BooksScreen(),
-    ),
-    GoRoute(
-      path: '/previous-question-bank',
-      builder: (context, state) => const PreviousQuestionBankScreen(),
-    ),
-    GoRoute(
-      path: '/question-bank',
-      builder: (context, state) => QuestionBankSetsScreen(
-        category: state.uri.queryParameters['category'] ?? 'Question Bank',
-      ),
-    ),
-    GoRoute(
-      path: '/exam-calendar',
-      builder: (context, state) => const ExamCalendarScreen(),
-    ),
-    GoRoute(
-      path: '/exam-batches',
-      builder: (context, state) => const ExamBatchesScreen(),
-    ),
-    GoRoute(
-      path: '/exam-batches/:batchId',
-      builder: (context, state) => ExamBatchDetailScreen(
-        batchId: state.pathParameters['batchId']!,
-        autoEnroll: state.uri.queryParameters['enroll'] == '1',
-      ),
-    ),
-    GoRoute(
-      path: '/routine',
-      builder: (context, state) => const RoutineScreen(),
-    ),
-    GoRoute(
-      path: '/profile',
-      builder: (context, state) => const MobileDashboard(initialIndex: 2),
+      branches: <StatefulShellBranch>[
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: _HomeGate(
+                  showNotices: state.uri.queryParameters['notice'] == '1',
+                ),
+              ),
+            ),
+            GoRoute(
+              path: '/admin',
+              builder: (context, state) => const _AdminGate(),
+            ),
+            GoRoute(
+              path: '/admin/exams',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminExamManagementPage()),
+            ),
+            GoRoute(
+              path: '/admin/exam-batches',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminExamBatchesScreen()),
+            ),
+            GoRoute(
+              path: '/admin/exam-batch-enrollers',
+              builder: (context, state) => const _AdminSectionGate(
+                child: AdminExamBatchPaymentsScreen(),
+              ),
+            ),
+            GoRoute(
+              path: '/admin/media',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminMediaPage()),
+            ),
+            GoRoute(
+              path: '/admin/mcqs',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminMcqPage()),
+            ),
+            GoRoute(
+              path: '/admin/notifications',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminNotificationsPage()),
+            ),
+            GoRoute(
+              path: '/admin/materials',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminMaterialsPage()),
+            ),
+            GoRoute(
+              path: '/admin/question-bank',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminQuestionBankPage()),
+            ),
+            GoRoute(
+              path: '/admin/results',
+              builder: (context, state) =>
+                  const _AdminSectionGate(child: AdminResultsPage()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/books',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const BooksScreen(),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/preparation',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const PreparationScreen(),
+              ),
+            ),
+            GoRoute(
+              path: '/subject-catalog',
+              builder: (context, state) => SubjectCatalogScreen(
+                categoryName: state.uri.queryParameters['category'],
+                createExam: state.uri.queryParameters['create'] == '1',
+              ),
+            ),
+            GoRoute(
+              path: '/previous-question-bank',
+              builder: (context, state) => const PreviousQuestionBankScreen(),
+            ),
+            GoRoute(
+              path: '/question-bank',
+              builder: (context, state) => QuestionBankSetsScreen(
+                category:
+                    state.uri.queryParameters['category'] ?? 'Question Bank',
+              ),
+            ),
+            GoRoute(
+              path: '/subject-practice',
+              builder: (context, state) => SubjectPracticeScreen(
+                topicId: state.uri.queryParameters['topicId'],
+                topicName: state.uri.queryParameters['topicName'],
+                showAll: state.uri.queryParameters['mode'] == 'all',
+              ),
+            ),
+            GoRoute(
+              path: '/written-practice',
+              builder: (context, state) => WrittenPracticeScreen(
+                topicId: state.uri.queryParameters['topicId'] ?? '',
+                topicName:
+                    state.uri.queryParameters['topicName'] ?? 'Written প্রশ্ন',
+                setId: state.uri.queryParameters['setId'],
+                startInExamMode: state.uri.queryParameters['mode'] == 'exam',
+              ),
+            ),
+            GoRoute(
+              path: '/exam-calendar',
+              builder: (context, state) => const ExamCalendarScreen(),
+            ),
+            GoRoute(
+              path: '/exam-batches',
+              builder: (context, state) => const ExamBatchesScreen(),
+            ),
+            GoRoute(
+              path: '/exam-batches/:batchId/pay',
+              builder: (context, state) => ExamBatchPaymentScreen(
+                batchId: state.pathParameters['batchId']!,
+              ),
+            ),
+            GoRoute(
+              path: '/exam-batches/:batchId',
+              builder: (context, state) => ExamBatchDetailScreen(
+                batchId: state.pathParameters['batchId']!,
+                autoEnroll: state.uri.queryParameters['enroll'] == '1',
+              ),
+            ),
+            GoRoute(
+              path: '/exam/:examId/read',
+              builder: (context, state) => ExamReadModeScreen(
+                examId: state.pathParameters['examId']!,
+              ),
+            ),
+            GoRoute(
+              path: '/exam/:examId/participants',
+              builder: (context, state) => ExamParticipantsScreen(
+                examId: state.pathParameters['examId']!,
+              ),
+            ),
+            GoRoute(
+              path: '/exam/:examId',
+              builder: (context, state) =>
+                  _ExamGate(examId: state.pathParameters['examId']!),
+            ),
+            GoRoute(
+              path: '/result/:attemptId',
+              builder: (context, state) =>
+                  ResultScreen(attemptId: state.pathParameters['attemptId']!),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/routine',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const RoutineScreen(),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/profile/settings',
+              builder: (context, state) => const ProfileSettingsScreen(),
+            ),
+            GoRoute(
+              path: '/profile',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const MobileDashboard(initialIndex: 2),
+              ),
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) => const NotificationsScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/biddyan-ai',
+              pageBuilder: (context, state) => NoTransitionPage(
+                key: state.pageKey,
+                child: const BidwaanAiScreen(),
+              ),
+            ),
+          ],
+        ),
+      ],
     ),
     GoRoute(
       path: '/account',
-      builder: (context, state) => AuthScreen(redirectTo: state.uri.queryParameters['redirect']),
-    ),
-    GoRoute(
-      path: '/biddyan-ai',
-      builder: (context, state) => const BiddyanAiScreen(),
+      builder: (context, state) =>
+          AuthScreen(redirectTo: state.uri.queryParameters['redirect']),
     ),
   ],
 );
+
+class _ApplicationShell extends StatelessWidget {
+  const _ApplicationShell({required this.navigationShell});
+
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) => BackButtonListener(
+        onBackButtonPressed: () async {
+          if (router.canPop()) return false;
+          if (navigationShell.currentIndex != 0) {
+            navigationShell.goBranch(0, initialLocation: true);
+            return true;
+          }
+          return false;
+        },
+        child: PersistentFooterScope(
+          child: Scaffold(
+            body: navigationShell,
+            bottomNavigationBar: BrandBottomNavigation(
+              isPersistent: true,
+              selectedIndex: navigationShell.currentIndex,
+              onSelected: (index) {
+                if (index == navigationShell.currentIndex) return;
+                navigationShell.goBranch(index);
+              },
+            ),
+          ),
+        ),
+      );
+}
 
 /// Shows the auth screen until logged in, then the dashboard.
 class _HomeGate extends ConsumerWidget {
@@ -267,11 +383,16 @@ class _ExamGateState extends ConsumerState<_ExamGate> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.assignment_rounded, size: 48, color: Color(0xFF00343A)),
+              const Icon(Icons.assignment_rounded,
+                  size: 48, color: Color(0xFF00343A)),
               const SizedBox(height: 12),
-              _ExamDetailRow(label: 'প্রশ্ন', value: '${exam.questions.length}টি'),
-              _ExamDetailRow(label: 'মোট নম্বর', value: exam.totalMarks.toStringAsFixed(0)),
-              _ExamDetailRow(label: 'সময়', value: '${exam.durationMinutes} মিনিট'),
+              _ExamDetailRow(
+                  label: 'প্রশ্ন', value: '${exam.questions.length}টি'),
+              _ExamDetailRow(
+                  label: 'মোট নম্বর',
+                  value: exam.totalMarks.toStringAsFixed(0)),
+              _ExamDetailRow(
+                  label: 'সময়', value: '${exam.durationMinutes} মিনিট'),
               if (exam.negativeMarking > 0)
                 _ExamDetailRow(
                   label: 'নেগেটিভ মার্কিং',

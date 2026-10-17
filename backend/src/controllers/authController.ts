@@ -13,7 +13,7 @@ export class AuthController {
     const passwordHash = await bcrypt.hash(password, 12);
     await pool.query(
       `INSERT INTO users (phone_number, password_hash, display_name, role)
-       VALUES ($1, $2, 'Biddyan Admin', 'admin')
+      VALUES ($1, $2, 'Bidwaan Admin', 'admin')
        ON CONFLICT (phone_number)
        DO UPDATE SET password_hash = EXCLUDED.password_hash,
                      display_name = EXCLUDED.display_name,
@@ -217,7 +217,7 @@ export class AuthController {
          ON CONFLICT (email)
          DO UPDATE SET display_name = EXCLUDED.display_name
          RETURNING id, email, display_name, role`,
-        [email || `${providerId}@biddyan-social.com`, name || `${provider} User`],
+        [email || `${providerId}@bidwaan-social.com`, name || `${provider} User`],
       );
       const user = userResult.rows[0];
       const userId = user.id;

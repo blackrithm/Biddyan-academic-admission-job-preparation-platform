@@ -1,8 +1,106 @@
+import 'package:flutter/material.dart';
+
 import '../core/api_client.dart';
 import '../models/models.dart';
 import 'mock_data.dart';
 
-/// Typed API service layer for Biddyan.
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.category,
+    this.route = '',
+  });
+
+  final String id;
+  final String title;
+  final String message;
+  final String category;
+  final String route;
+
+  String get displayCategory =>
+      category == 'বিদ্বান AI' ? 'Bidwaan AI' : category;
+
+  IconData get icon {
+    switch (category) {
+      case 'পরীক্ষা':
+        return Icons.campaign_outlined;
+      case 'Bidwaan AI':
+      case 'বিদ্বান AI':
+        return Icons.auto_awesome_outlined;
+      case 'সাধারণ':
+      default:
+        return Icons.notifications_active_outlined;
+    }
+  }
+
+  Color get accent {
+    switch (category) {
+      case 'পরীক্ষা':
+        return const Color(0xFFD9342B);
+      case 'Bidwaan AI':
+      case 'বিদ্বান AI':
+        return const Color(0xFF007F78);
+      case 'সাধারণ':
+      default:
+        return const Color(0xFF2D6CDF);
+    }
+  }
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) =>
+      AppNotification(
+        id: (json['id'] ?? DateTime.now().millisecondsSinceEpoch.toString())
+            as String,
+        title: (json['title'] ?? 'নোটিফিকেশন') as String,
+        message: (json['message'] ?? '') as String,
+        category: (json['category'] ?? 'সাধারণ') as String,
+        route: (json['route'] ?? '') as String,
+      );
+
+  static List<AppNotification> defaultItems() => const [
+        AppNotification(
+          id: 'default-exam',
+          category: 'পরীক্ষা',
+          title: 'নতুন পরীক্ষার আপডেট',
+          message: 'আপনার জন্য নতুন exam ও study update এসেছে।',
+          route: '/exam-calendar',
+        ),
+        AppNotification(
+          id: 'default-ai',
+          category: 'Bidwaan AI',
+          title: 'Bidwaan AI এখন প্রস্তুত',
+          message: 'যেকোনো প্রশ্ন নিয়ে AI-এর সঙ্গে practice করুন।',
+          route: '/biddyan-ai',
+        ),
+      ];
+}
+
+class NotificationService {
+  const NotificationService(this.client);
+
+  final ApiClient client;
+
+  Future<List<AppNotification>> list() async {
+    final json = await client.get('notifications');
+    return (json as List<dynamic>)
+        .map((item) => AppNotification.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<AppNotification> create(
+      {required String title, required String message}) async {
+    final json = await client.post('notifications', body: {
+      'title': title,
+      'message': message,
+    });
+    return AppNotification.fromJson(json as Map<String, dynamic>);
+  }
+
+  Future<void> remove(String id) => client.delete('notifications/$id');
+}
+
+/// Typed API service layer for Bidwaan.
 ///
 /// Every method maps 1:1 to a backend REST route exposed by the Express API
 /// (`backend/src/routes/api.ts` + `backend/src/controllers/*`).
@@ -67,7 +165,7 @@ class AuthService {
         token: 'mock-otp-token',
         userId: 'b1dd1a11-0000-4000-8000-000000000001',
         phoneNumber: phoneNumber,
-        displayName: 'Biddyan User',
+        displayName: 'Bidwaan User',
       );
     }
   }
@@ -101,6 +199,10 @@ class ProfileService {
     List<String>? preparationCategories,
     bool? notificationsEnabled,
     String? preferredLanguage,
+    String? email,
+    String? institutionType,
+    String? institutionName,
+    String? location,
   }) async {
     final json = await client.put('profile', body: {
       if (displayName != null) 'displayName': displayName,
@@ -110,11 +212,16 @@ class ProfileService {
       if (notificationsEnabled != null)
         'notificationsEnabled': notificationsEnabled,
       if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
+      if (email != null) 'email': email,
+      if (institutionType != null) 'institutionType': institutionType,
+      if (institutionName != null) 'institutionName': institutionName,
+      if (location != null) 'location': location,
     });
     return UserProfile.fromJson(json as Map<String, dynamic>);
   }
 
-  Future<void> changePassword(String currentPassword, String newPassword) async {
+  Future<void> changePassword(
+      String currentPassword, String newPassword) async {
     await client.put('profile/password', body: {
       'currentPassword': currentPassword,
       'newPassword': newPassword,
@@ -209,7 +316,8 @@ class TopicService {
     required List<String> childIds,
     required bool copyQuestions,
   }) async {
-    final json = await client.post('topics/$sourceTopicId/copy-subtopics', body: {
+    final json =
+        await client.post('topics/$sourceTopicId/copy-subtopics', body: {
       'targetParentId': targetParentId,
       'childIds': childIds,
       'copyQuestions': copyQuestions,
@@ -255,8 +363,10 @@ class QuestionService {
             question.questionText.toLowerCase().contains(search.toLowerCase());
         final matchesYear = previousYear == null ||
             question.previousYears.contains(previousYear);
-        final matchesExamType = examType == null || question.examType == examType;
-        final matchesSet = questionSet == null || question.questionSet == questionSet;
+        final matchesExamType =
+            examType == null || question.examType == examType;
+        final matchesSet =
+            questionSet == null || question.questionSet == questionSet;
         return matchesTopic &&
             matchesSearch &&
             matchesYear &&
@@ -325,7 +435,8 @@ class WrittenQuestionService {
       if (includeChildren) 'includeChildren': 'true',
     });
     return (json as List<dynamic>)
-        .map((item) => WrittenQuestion.fromJson(Map<String, dynamic>.from(item as Map)))
+        .map((item) =>
+            WrittenQuestion.fromJson(Map<String, dynamic>.from(item as Map)))
         .toList();
   }
 
@@ -419,7 +530,7 @@ class ExamService {
       'title': title,
       'topicId': topicId,
       'totalMarks': totalMarks > 0 ? totalMarks : questionIds.length,
-        'passMark': passMark > 0
+      'passMark': passMark > 0
           ? passMark
           : (totalMarks > 0 ? totalMarks : questionIds.length) * 0.4,
       'negativeMarking': negativeMarking,
@@ -464,10 +575,52 @@ class ExamService {
     await client.post('exam-batches/$batchId/enroll');
   }
 
+  Future<Map<String, dynamic>> submitBatchPayment({
+    required String batchId,
+    required String provider,
+    required String paidFromNumber,
+    required String transactionId,
+  }) async {
+    final json = await client.post('exam-batches/$batchId/payments', body: {
+      'provider': provider,
+      'paidFromNumber': paidFromNumber,
+      'transactionId': transactionId,
+    });
+    return Map<String, dynamic>.from(json as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> adminBatchPayments() async {
+    final json = await client.get('admin/exam-batch-payments');
+    return (json as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> updateBatchPayment({
+    required String paymentId,
+    String? provider,
+    String? paidFromNumber,
+    String? transactionId,
+    String? status,
+    String? reviewNote,
+  }) async {
+    final json =
+        await client.put('admin/exam-batch-payments/$paymentId', body: {
+      if (provider != null) 'provider': provider,
+      if (paidFromNumber != null) 'paidFromNumber': paidFromNumber,
+      if (transactionId != null) 'transactionId': transactionId,
+      if (status != null) 'status': status,
+      if (reviewNote != null) 'reviewNote': reviewNote,
+    });
+    return Map<String, dynamic>.from(json as Map);
+  }
+
   Future<void> createBatch({
     required String name,
     required String examType,
     required String description,
+    required double price,
+    required List<String> demoExamIds,
     String? imageUrl,
     required List<Map<String, String>> exams,
   }) async {
@@ -475,6 +628,8 @@ class ExamService {
       'name': name,
       'examType': examType,
       'description': description,
+      'price': price,
+      'demoExamIds': demoExamIds,
       'imageUrl': imageUrl,
       'exams': exams,
     });
@@ -485,6 +640,8 @@ class ExamService {
     required String name,
     required String examType,
     required String description,
+    required double price,
+    required List<String> demoExamIds,
     String? imageUrl,
     required List<Map<String, String>> exams,
   }) async {
@@ -492,6 +649,8 @@ class ExamService {
       'name': name,
       'examType': examType,
       'description': description,
+      'price': price,
+      'demoExamIds': demoExamIds,
       'imageUrl': imageUrl,
       'exams': exams,
     });
@@ -529,11 +688,11 @@ class ExamService {
     String title = 'Instant Practice Exam',
   }) async {
     final json = await client.post('exams/generate-dynamic', body: {
-        'topicId': topicId,
-        'questionCount': questionCount,
-        if (durationMinutes != null) 'durationMinutes': durationMinutes,
-        'title': title,
-      });
+      'topicId': topicId,
+      'questionCount': questionCount,
+      if (durationMinutes != null) 'durationMinutes': durationMinutes,
+      'title': title,
+    });
     final payload = json as Map<String, dynamic>;
     final exam = payload['exam'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(payload['exam'] as Map<String, dynamic>)

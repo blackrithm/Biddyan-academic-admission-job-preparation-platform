@@ -29,6 +29,10 @@ const _preparationCategories = <(String, IconData)>[
   ('নন-ক্যাডার', FontAwesomeIcons.userTie),
 ];
 
+final _preparationTopicNames = _preparationCategories
+    .map((category) => category.$1)
+    .toList(growable: false);
+
 void _openPreparationCategory(BuildContext context, String title) {
   final category = switch (title) {
     'BCS প্রস্তুতি' => 'BCS',
@@ -95,7 +99,7 @@ class _MobileDashboardState extends ConsumerState<MobileDashboard> {
             Scaffold.of(context).openDrawer();
           }
         },
-        onNotification: () => BrandNotificationPopup.show(context),
+        onNotification: () => context.push('/notifications'),
       ),
       drawer: DashboardDrawer(
         profile: _sidebarProfile,
@@ -136,20 +140,18 @@ class PreparationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('সেলফ স্টাডি & প্রশ্নব্যাংক')),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-                _FeatureGrid(
-                  items: _preparationCategories,
-                  onTap: (title) => _openPreparationCategory(context, title),
-                ),
-              ],
+        appBar: AppBar(
+          leading: const AppBackButton(),
+          title: const Text('সেলফ স্টাডি & প্রশ্নব্যাংক'),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            _FeatureGrid(
+              items: _preparationCategories,
+              onTap: (title) => _openPreparationCategory(context, title),
             ),
-          ),
+          ],
         ),
         bottomNavigationBar: BrandBottomNavigation(
           selectedIndex: 2,
@@ -198,8 +200,10 @@ class _DashboardHomeState extends ConsumerState<_DashboardHome> {
               backgroundColor: AppConstants.primary,
               child: Icon(Icons.auto_graph, color: Colors.white),
             ),
-            title: const Text('Make Dynamic Exam', style: TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: const Text('নিজের মতো এক্সাম বানান, পরীক্ষা দিন, এক্সাম বন্ধুদের শেয়ার করে লিডারবোর্ডে র‍্যাঙ্ক দেখুন! '),
+            title: const Text('Make Dynamic Exam',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: const Text(
+                'নিজের মতো এক্সাম বানান, পরীক্ষা দিন, এক্সাম বন্ধুদের শেয়ার করে লিডারবোর্ডে র‍্যাঙ্ক দেখুন! '),
             trailing: const Icon(Icons.chevron_right),
             onTap: _openExamCreator,
           ),
@@ -214,14 +218,17 @@ class _DashboardHomeState extends ConsumerState<_DashboardHome> {
               backgroundColor: AppConstants.primary,
               child: Icon(Icons.groups_outlined, color: Colors.white),
             ),
-            title: const Text('ফ্রি এক্সাম ব্যাচে যোগ দিন', style: TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: const Text('ব্যাচভিত্তিক রুটিনে বিভিন্ন ধরনের পরীক্ষা দিন'),
+            title: const Text('ফ্রি এক্সাম ব্যাচে যোগ দিন',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle:
+                const Text('ব্যাচভিত্তিক রুটিনে বিভিন্ন ধরনের পরীক্ষা দিন'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/exam-batches'),
           ),
         ),
         const SizedBox(height: 24),
-        _SectionTitle(title: 'সেলফ স্টাডি & প্রশ্নব্যাংক', color: AppConstants.primary),
+        _SectionTitle(
+            title: 'সেলফ স্টাডি & প্রশ্নব্যাংক', color: AppConstants.primary),
         const SizedBox(height: 8),
         _FeatureGrid(
           items: _preparationCategories,
@@ -230,7 +237,6 @@ class _DashboardHomeState extends ConsumerState<_DashboardHome> {
       ],
     );
   }
-
 }
 
 class _StudyProgressCard extends StatelessWidget {
@@ -248,9 +254,16 @@ class _StudyProgressCard extends StatelessWidget {
                 children: [
                   const Expanded(
                     child: Text('এই সপ্তাহের progress',
-                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700)),
                   ),
-                  Text('৬৮%', style: TextStyle(color: Colors.white.withValues(alpha: .9), fontSize: 21, fontWeight: FontWeight.w800)),
+                  Text('৬৮%',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: .9),
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -281,7 +294,9 @@ class _DashboardSectionHeading extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
           Text(subtitle, style: const TextStyle(color: AppConstants.mutedText)),
         ],
@@ -297,18 +312,78 @@ class _ActivitySummaryGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = stats;
     final metrics = [
-      (Icons.menu_book, '${data?.totalQuestionsRead ?? 0}', 'Total Questions Read', const Color(0xFFE8F3F1)),
-      (Icons.assignment_outlined, '${data?.totalExams ?? 0}', 'Total Exams', const Color(0xFFFFF2D8)),
-      (Icons.auto_graph, '${data?.totalPracticeExams ?? 0}', 'Practice Exams', const Color(0xFFEFE8FF)),
-      (Icons.live_tv, '${data?.totalLiveExams ?? 0}', 'Live Exams', const Color(0xFFFFE8E8)),
-      (Icons.verified_outlined, '${data?.totalPassedExams ?? 0}', 'Passed Exams', const Color(0xFFE3F4E7)),
-      (Icons.warning_amber_outlined, '${data?.failedOrIncompleteExams ?? 0}', 'Failed / Incomplete', const Color(0xFFFFF0E0)),
-      (Icons.check_circle_outline, '${data?.totalRightAnswers ?? 0}', 'Right Answers', const Color(0xFFE4F5EF)),
-      (Icons.cancel_outlined, '${data?.totalWrongAnswers ?? 0}', 'Wrong Answers', const Color(0xFFFFE8EA)),
-      (Icons.remove_circle_outline, '${data?.totalSkippedAnswers ?? 0}', 'Skip / Unanswer', const Color(0xFFF0F1F4)),
-      (Icons.timer_outlined, _formatStudyTime(data?.totalStudyMinutes ?? 0), 'Study Time', const Color(0xFFE8F0FF)),
-      (Icons.volunteer_activism_outlined, '${data?.totalContribution ?? 0}', 'Contribution', const Color(0xFFFFEAF4)),
-      (Icons.emoji_events_outlined, data?.overallRank == null ? '—' : '#${data!.overallRank}', 'Overall Rank', const Color(0xFFE6F4F5)),
+      (
+        Icons.menu_book,
+        '${data?.totalQuestionsRead ?? 0}',
+        'Total Questions Read',
+        const Color(0xFFE8F3F1)
+      ),
+      (
+        Icons.assignment_outlined,
+        '${data?.totalExams ?? 0}',
+        'Total Exams',
+        const Color(0xFFFFF2D8)
+      ),
+      (
+        Icons.auto_graph,
+        '${data?.totalPracticeExams ?? 0}',
+        'Practice Exams',
+        const Color(0xFFEFE8FF)
+      ),
+      (
+        Icons.live_tv,
+        '${data?.totalLiveExams ?? 0}',
+        'Live Exams',
+        const Color(0xFFFFE8E8)
+      ),
+      (
+        Icons.verified_outlined,
+        '${data?.totalPassedExams ?? 0}',
+        'Passed Exams',
+        const Color(0xFFE3F4E7)
+      ),
+      (
+        Icons.warning_amber_outlined,
+        '${data?.failedOrIncompleteExams ?? 0}',
+        'Failed / Incomplete',
+        const Color(0xFFFFF0E0)
+      ),
+      (
+        Icons.check_circle_outline,
+        '${data?.totalRightAnswers ?? 0}',
+        'Right Answers',
+        const Color(0xFFE4F5EF)
+      ),
+      (
+        Icons.cancel_outlined,
+        '${data?.totalWrongAnswers ?? 0}',
+        'Wrong Answers',
+        const Color(0xFFFFE8EA)
+      ),
+      (
+        Icons.remove_circle_outline,
+        '${data?.totalSkippedAnswers ?? 0}',
+        'Skip / Unanswer',
+        const Color(0xFFF0F1F4)
+      ),
+      (
+        Icons.timer_outlined,
+        _formatStudyTime(data?.totalStudyMinutes ?? 0),
+        'Study Time',
+        const Color(0xFFE8F0FF)
+      ),
+      (
+        Icons.volunteer_activism_outlined,
+        '${data?.totalContribution ?? 0}',
+        'Contribution',
+        const Color(0xFFFFEAF4)
+      ),
+      (
+        Icons.emoji_events_outlined,
+        data?.overallRank == null ? '—' : '#${data!.overallRank}',
+        'Overall Rank',
+        const Color(0xFFE6F4F5)
+      ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -344,7 +419,11 @@ class _ActivitySummaryGrid extends StatelessWidget {
 }
 
 class _ActivityMetric extends StatelessWidget {
-  const _ActivityMetric({required this.icon, required this.value, required this.label, required this.color});
+  const _ActivityMetric(
+      {required this.icon,
+      required this.value,
+      required this.label,
+      required this.color});
   final IconData icon;
   final String value;
   final String label;
@@ -353,14 +432,21 @@ class _ActivityMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+            color: color, borderRadius: BorderRadius.circular(16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: AppConstants.primary, size: 22),
             const SizedBox(height: 9),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+            Text(value,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 11, color: AppConstants.mutedText)),
           ],
         ),
       );
@@ -381,7 +467,9 @@ class _RecentActivityList extends StatelessWidget {
             children: [
               Icon(Icons.auto_awesome_outlined, color: AppConstants.primary),
               SizedBox(width: 12),
-              Expanded(child: Text('আপনি exam বা topic practice শুরু করলে এখানে সাম্প্রতিক activity দেখা যাবে।')),
+              Expanded(
+                  child: Text(
+                      'আপনি exam বা topic practice শুরু করলে এখানে সাম্প্রতিক activity দেখা যাবে।')),
             ],
           ),
         ),
@@ -393,7 +481,8 @@ class _RecentActivityList extends StatelessWidget {
         children: [
           for (var index = 0; index < activities.length; index++) ...[
             _ActivityTile(activity: activities[index]),
-            if (index < activities.length - 1) const Divider(height: 1, indent: 68),
+            if (index < activities.length - 1)
+              const Divider(height: 1, indent: 68),
           ],
         ],
       ),
@@ -417,16 +506,20 @@ class _ActivityTile extends StatelessWidget {
         : '${activity.questionCount ?? 0}টি প্রশ্ন পড়া • ${_relativeTime(activity.activityAt)}';
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: isExam ? const Color(0xFFE8F3F1) : const Color(0xFFFFF2D8),
+        backgroundColor:
+            isExam ? const Color(0xFFE8F3F1) : const Color(0xFFFFF2D8),
         child: Icon(
           isExam ? Icons.check : Icons.menu_book_outlined,
           color: isExam ? AppConstants.primary : const Color(0xFFB77900),
         ),
       ),
-      title: Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      title: Text(activity.title,
+          style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(details),
       trailing: score != null
-          ? Text(score, style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.primary))
+          ? Text(score,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, color: AppConstants.primary))
           : const Icon(Icons.play_arrow, color: AppConstants.primary),
       onTap: () {
         if (isExam) {
@@ -530,21 +623,26 @@ class _QuestionBankSectionState extends State<_QuestionBankSection> {
               const SizedBox(height: 14),
               Text(
                 '${_selectedCategory!} Question Sets',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               if (sets.isEmpty)
                 const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
-                    child: Text('এই category-তে এখনো কোনো question set upload করা হয়নি।'),
+                    child: Text(
+                        'এই category-তে এখনো কোনো question set upload করা হয়নি।'),
                   ),
                 )
               else
                 _FeatureGrid(
                   items: [
                     for (final entry in sets.entries)
-                      ('${entry.key} (${entry.value}টি)', FontAwesomeIcons.listCheck),
+                      (
+                        '${entry.key} (${entry.value}টি)',
+                        FontAwesomeIcons.listCheck
+                      ),
                   ],
                   onTap: (_) => context.push('/previous-question-bank'),
                 ),
@@ -576,6 +674,7 @@ class _QuestionBankSectionState extends State<_QuestionBankSection> {
               collect(child);
             }
           }
+
           collect(node);
         }
         visit(node.children);
@@ -896,6 +995,7 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
           onPhoto: _pickPhoto,
           onEditName: () => _editName(context),
           selectedCategories: profile.preparationCategories,
+          topics: _preparationTopicNames,
           onCategorySelected: _toggleCategory,
         ),
         const SizedBox(height: 14),
@@ -918,7 +1018,8 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
             ),
             IconButton(
               tooltip: 'তালিকা refresh করুন',
-              onPressed: () => setState(() => _myExams = ExamService(apiClient).myCreatedExams()),
+              onPressed: () => setState(
+                  () => _myExams = ExamService(apiClient).myCreatedExams()),
               icon: const Icon(Icons.refresh),
             ),
           ],
@@ -929,7 +1030,9 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
             child: ListTile(
               leading: const Icon(Icons.lock_outline),
               title: const Text('নিজের exam ও rank দেখতে sign in করুন'),
-              trailing: TextButton(onPressed: () => context.push('/account'), child: const Text('Sign in')),
+              trailing: TextButton(
+                  onPressed: () => context.push('/account'),
+                  child: const Text('Sign in')),
             ),
           )
         else
@@ -946,7 +1049,8 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
                 return Card(
                   child: ListTile(
                     title: const Text('তৈরি exam লোড করা যায়নি'),
-                    onTap: () => setState(() => _myExams = ExamService(apiClient).myCreatedExams()),
+                    onTap: () => setState(() =>
+                        _myExams = ExamService(apiClient).myCreatedExams()),
                   ),
                 );
               }
@@ -956,7 +1060,8 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
                   child: ListTile(
                     leading: Icon(Icons.assignment_add),
                     title: Text('এখনো কোনো dynamic exam তৈরি করেননি'),
-                    subtitle: Text('Home-এর Make Dynamic Exam থেকে প্রথম exam তৈরি করুন'),
+                    subtitle: Text(
+                        'Home-এর Make Dynamic Exam থেকে প্রথম exam তৈরি করুন'),
                   ),
                 );
               }
@@ -970,9 +1075,12 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(exam.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                            Text(exam.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800)),
                             const SizedBox(height: 3),
-                            Text('${exam.questionCount ?? exam.questions.length}টি প্রশ্ন • ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ${exam.durationMinutes} মিনিট'),
+                            Text(
+                                '${exam.questionCount ?? exam.questions.length}টি প্রশ্ন • ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ${exam.durationMinutes} মিনিট'),
                             Wrap(
                               alignment: WrapAlignment.end,
                               spacing: 4,
@@ -980,10 +1088,15 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
                                 IconButton(
                                   tooltip: 'লিংক কপি করুন',
                                   onPressed: () async {
-                                    final shareUrl = '${Uri.base.origin}/#/exam/${exam.id}';
-                                    await Clipboard.setData(ClipboardData(text: shareUrl));
+                                    final shareUrl =
+                                        '${Uri.base.origin}/#/exam/${exam.id}';
+                                    await Clipboard.setData(
+                                        ClipboardData(text: shareUrl));
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exam link কপি হয়েছে')));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content:
+                                                  Text('Exam link কপি হয়েছে')));
                                     }
                                   },
                                   icon: const Icon(Icons.copy_outlined),
@@ -994,8 +1107,10 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
                                   icon: const Icon(Icons.share_outlined),
                                 ),
                                 TextButton.icon(
-                                  onPressed: () => context.push('/exam/${exam.id}/participants'),
-                                  icon: const Icon(Icons.leaderboard_outlined, size: 18),
+                                  onPressed: () => context
+                                      .push('/exam/${exam.id}/participants'),
+                                  icon: const Icon(Icons.leaderboard_outlined,
+                                      size: 18),
                                   label: const Text('ফলাফল ও rank'),
                                 ),
                               ],
@@ -1022,8 +1137,10 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
               backgroundColor: Color(0xFFE8F3F1),
               child: Icon(Icons.settings_outlined, color: AppConstants.primary),
             ),
-            title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text('Notification, language ও account preferences'),
+            title: const Text('Settings',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle:
+                const Text('Personal details, education ও account preferences'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showSettings(context),
           ),
@@ -1034,14 +1151,19 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
 
   Future<void> _shareExam(Exam exam) async {
     final shareUrl = '${Uri.base.origin}/#/exam/${exam.id}';
-    final shareUri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent('${exam.title}\n$shareUrl')}');
-    if (!await launchUrl(shareUri, mode: LaunchMode.externalApplication) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Share link খোলা যায়নি')));
+    final shareUri = Uri.parse(
+        'https://wa.me/?text=${Uri.encodeComponent('${exam.title}\n$shareUrl')}');
+    if (!await launchUrl(shareUri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Share link খোলা যায়নি')));
     }
   }
 
   Future<void> _toggleCategory(String category) async {
     final current = [...?_profile?.preparationCategories];
+    current.removeWhere(
+        (savedCategory) => !_preparationTopicNames.contains(savedCategory));
     if (current.contains(category)) {
       current.remove(category);
     } else {
@@ -1053,12 +1175,17 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
       );
       if (mounted) setState(() => _profile = updated);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Category save failed: $error')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Category save failed: $error')),
+        );
+      }
     }
   }
 
   Future<void> _pickPhoto() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75);
+    final image = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 75);
     if (image == null) return;
     try {
       final bytes = await image.readAsBytes();
@@ -1077,7 +1204,11 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
       );
       if (mounted) setState(() => _profile = profile);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Profile picture save failed: $error')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Profile picture save failed: $error')),
+        );
+      }
     }
   }
 
@@ -1089,8 +1220,13 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
         title: const Text('নাম পরিবর্তন করুন'),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('বাতিল')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('সংরক্ষণ')),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('বাতিল')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('সংরক্ষণ')),
         ],
       ),
     );
@@ -1102,97 +1238,16 @@ class _ProfilePageState extends ConsumerState<_ProfilePage> {
       setState(() => _profile = updated);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Name save failed: $error')));
+      ScaffoldMessenger.of(this.context)
+          .showSnackBar(SnackBar(content: Text('Name save failed: $error')));
     }
   }
 
-  Future<void> _changePassword(BuildContext context) async {
-    final current = TextEditingController();
-    final next = TextEditingController();
-    final values = await showDialog<(String, String)>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Password পরিবর্তন করুন'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: current, obscureText: true, decoration: const InputDecoration(labelText: 'বর্তমান password')),
-            const SizedBox(height: 10),
-            TextField(controller: next, obscureText: true, decoration: const InputDecoration(labelText: 'নতুন password')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('বাতিল')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, (current.text, next.text)), child: const Text('আপডেট')),
-        ],
-      ),
-    );
-    current.dispose();
-    next.dispose();
-    if (values == null) return;
-    try {
-      await ProfileService(apiClient).changePassword(values.$1, values.$2);
-      if (!mounted) return;
-      ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Password update failed: $error')));
+  Future<void> _showSettings(BuildContext context) async {
+    final updated = await context.push<UserProfile>('/profile/settings');
+    if (updated != null && mounted) {
+      setState(() => _profile = updated);
     }
-  }
-
-  void _showSettings(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              leading: Icon(Icons.settings_outlined, color: AppConstants.primary),
-              title: Text('Profile settings', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('নাম পরিবর্তন করুন'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.pop(context);
-                _editName(this.context);
-              },
-            ),
-            SwitchListTile(
-              secondary: const Icon(Icons.notifications_none),
-              title: const Text('Study notifications'),
-              value: _profile?.notificationsEnabled ?? true,
-              onChanged: (value) async {
-                final updated = await ProfileService(apiClient).update(notificationsEnabled: value);
-                if (mounted) setState(() => _profile = updated);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('ভাষা'),
-              trailing: Text(_profile?.preferredLanguage ?? 'বাংলা'),
-              onTap: () async {
-                final updated = await ProfileService(apiClient).update(preferredLanguage: 'বাংলা');
-                if (mounted) setState(() => _profile = updated);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Account security'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.pop(context);
-                _changePassword(this.context);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -1203,6 +1258,7 @@ class _ProfileIdentityCard extends StatelessWidget {
     required this.onPhoto,
     required this.onEditName,
     required this.selectedCategories,
+    required this.topics,
     required this.onCategorySelected,
     this.imageUrl,
   });
@@ -1212,6 +1268,7 @@ class _ProfileIdentityCard extends StatelessWidget {
   final VoidCallback onPhoto;
   final VoidCallback onEditName;
   final List<String> selectedCategories;
+  final List<String> topics;
   final ValueChanged<String> onCategorySelected;
   final String? imageUrl;
 
@@ -1226,10 +1283,12 @@ class _ProfileIdentityCard extends StatelessWidget {
             );
             final selector = _PreparationTypeDropdown(
               selected: selectedCategories,
+              topics: topics,
               onSelected: onCategorySelected,
             );
             final mobileSelector = _PreparationTypeDropdown(
               selected: selectedCategories,
+              topics: topics,
               onSelected: onCategorySelected,
               centered: true,
             );
@@ -1258,7 +1317,8 @@ class _ProfileIdentityCard extends StatelessWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            _ProfileAvatar(imageUrl: imageUrl, onPhoto: onPhoto),
+                            _ProfileAvatar(
+                                imageUrl: imageUrl, onPhoto: onPhoto),
                             const SizedBox(width: 12),
                             Flexible(
                               child: _IdentityDetails(
@@ -1295,7 +1355,8 @@ class _ProfileAvatar extends StatelessWidget {
             backgroundColor: const Color(0xFFDCECEA),
             backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
             child: imageUrl == null
-                ? const Icon(Icons.person, size: 38, color: AppConstants.primary)
+                ? const Icon(Icons.person,
+                    size: 38, color: AppConstants.primary)
                 : null,
           ),
           Positioned(
@@ -1318,7 +1379,8 @@ class _ProfileAvatar extends StatelessWidget {
 }
 
 class _IdentityDetails extends StatelessWidget {
-  const _IdentityDetails({required this.name, required this.selectedCategories});
+  const _IdentityDetails(
+      {required this.name, required this.selectedCategories});
 
   final String name;
   final List<String> selectedCategories;
@@ -1334,7 +1396,8 @@ class _IdentityDetails extends StatelessWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 3),
-          const Text('Student profile', style: TextStyle(color: AppConstants.mutedText)),
+          const Text('Student profile',
+              style: TextStyle(color: AppConstants.mutedText)),
           if (selectedCategories.isNotEmpty) ...[
             const SizedBox(height: 7),
             Wrap(
@@ -1406,32 +1469,27 @@ class _IdentityActions extends StatelessWidget {
 class _PreparationTypeDropdown extends StatelessWidget {
   const _PreparationTypeDropdown({
     required this.selected,
+    required this.topics,
     required this.onSelected,
     this.centered = false,
   });
 
   final List<String> selected;
+  final List<String> topics;
   final ValueChanged<String> onSelected;
   final bool centered;
 
-  static const _categories = [
-    ('Academic', Icons.school_outlined),
-    ('Admission', Icons.account_balance_outlined),
-    ('BCS & Jobs', Icons.work_outline),
-    ('Bank Job', Icons.account_balance_wallet_outlined),
-    ('Medical', Icons.local_hospital_outlined),
-    ('Engineering', Icons.settings_outlined),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final selectedLabel = selected.isEmpty
-        ? 'Select type'
-        : selected.length == 1
-            ? selected.first
-            : '${selected.length} selected';
+    final selectedTopics = selected.where(topics.contains).toList();
+    final selectedLabel = selectedTopics.isEmpty
+        ? 'Select topic'
+        : selectedTopics.length == 1
+            ? selectedTopics.first
+            : '${selectedTopics.length} selected';
     return Column(
-      crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         Text(
           'Preparation Type',
@@ -1447,20 +1505,20 @@ class _PreparationTypeDropdown extends StatelessWidget {
           tooltip: 'Preparation Type নির্বাচন করুন',
           onSelected: onSelected,
           itemBuilder: (context) => [
-            for (final category in _categories)
+            for (final topic in topics)
               PopupMenuItem<String>(
-                value: category.$1,
+                value: topic,
                 child: Row(
                   children: [
                     Icon(
-                      selected.contains(category.$1)
+                      selectedTopics.contains(topic)
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: AppConstants.primary,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    Text(category.$1),
+                    Text(topic),
                   ],
                 ),
               ),
@@ -1488,7 +1546,8 @@ class _PreparationTypeDropdown extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.keyboard_arrow_down, size: 17, color: AppConstants.primary),
+                const Icon(Icons.keyboard_arrow_down,
+                    size: 17, color: AppConstants.primary),
               ],
             ),
           ),
@@ -1521,7 +1580,7 @@ class DashboardDrawer extends ConsumerWidget {
     final signedInAsGuest = isGuest ?? authUser == null;
     final adminUser = isAdmin ?? authUser?.role == 'admin';
     final name = signedInAsGuest
-        ? 'Guest-Biddyan-User'
+        ? 'Guest-Bidwaan-User'
         : (profile?.displayName ?? authUser?.displayName ?? 'শিক্ষার্থী');
     final phone = profile?.phoneNumber ?? authUser?.phoneNumber ?? '';
     final imageUrl = profile?.profileImageUrl;
@@ -1530,7 +1589,7 @@ class DashboardDrawer extends ConsumerWidget {
 
     void navigate(String route) {
       Navigator.pop(context);
-      context.go(route);
+      context.push(route);
     }
 
     void showComingSoon(String title) {
@@ -1542,7 +1601,10 @@ class DashboardDrawer extends ConsumerWidget {
 
     Future<void> copyInviteLink() async {
       await Clipboard.setData(
-        ClipboardData(text: Uri.base.replace(path: '/', query: null, fragment: null).toString()),
+        ClipboardData(
+            text: Uri.base
+                .replace(path: '/', query: null, fragment: null)
+                .toString()),
       );
       if (!context.mounted) return;
       Navigator.pop(context);
@@ -1562,40 +1624,22 @@ class DashboardDrawer extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(18, 12, 14, 18),
               decoration: const BoxDecoration(
                 color: AppConstants.primary,
-                borderRadius: BorderRadius.only(bottomRight: Radius.circular(24)),
+                borderRadius:
+                    BorderRadius.only(bottomRight: Radius.circular(24)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13)),
-                        child: Image.asset('assets/biddyan_logo.png', fit: BoxFit.contain),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text('বিদ্বান', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                      ),
-                      IconButton(
-                        tooltip: 'মেনু বন্ধ করুন',
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
                       CircleAvatar(
                         radius: 25,
                         backgroundColor: const Color(0xFFDCEDEC),
-                        backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl),
+                        backgroundImage:
+                            imageUrl == null ? null : NetworkImage(imageUrl),
                         child: imageUrl == null
-                            ? const Icon(Icons.person_outline, color: AppConstants.primary, size: 28)
+                            ? const Icon(Icons.person_outline,
+                                color: AppConstants.primary, size: 28)
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -1603,13 +1647,36 @@ class DashboardDrawer extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                            Text(name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800)),
                             if (phone.isNotEmpty)
-                              Text(phone, style: const TextStyle(color: Color(0xFFCCE0DE), fontSize: 12)),
+                              Text(phone,
+                                  style: const TextStyle(
+                                      color: Color(0xFFCCE0DE), fontSize: 12)),
                             if (signedInAsGuest)
-                              const Text('শেখা শুরু করতে আপনার অ্যাকাউন্টে প্রবেশ করুন', maxLines: 2, style: TextStyle(color: Color(0xFFCCE0DE), fontSize: 11)),
+                              const Text(
+                                  'শেখা শুরু করতে আপনার অ্যাকাউন্টে প্রবেশ করুন',
+                                  maxLines: 2,
+                                  style: TextStyle(
+                                      color: Color(0xFFCCE0DE), fontSize: 11)),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        tooltip: 'Profile settings',
+                        onPressed: () => navigate('/profile/settings'),
+                        icon: const Icon(Icons.settings_outlined,
+                            color: Colors.white),
+                      ),
+                      IconButton(
+                        tooltip: 'মেনু বন্ধ করুন',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.white),
                       ),
                     ],
                   ),
@@ -1621,9 +1688,16 @@ class DashboardDrawer extends ConsumerWidget {
                       children: [
                         for (final type in preparationTypes.take(2))
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(color: const Color(0xFF24575A), borderRadius: BorderRadius.circular(16)),
-                            child: Text(type, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                                color: const Color(0xFF24575A),
+                                borderRadius: BorderRadius.circular(16)),
+                            child: Text(type,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600)),
                           ),
                       ],
                     ),
@@ -1670,10 +1744,22 @@ class DashboardDrawer extends ConsumerWidget {
                       }
                     },
                   ),
-                  _DrawerMenuItem(icon: Icons.auto_awesome_outlined, title: 'বিদ্বান AI', onTap: () => navigate('/biddyan-ai')),
-                  _DrawerMenuItem(icon: Icons.groups_outlined, title: 'এক্সাম ব্যাচ', onTap: () => navigate('/exam-batches')),
-                  _DrawerMenuItem(icon: Icons.calendar_month_outlined, title: 'এক্সাম ক্যালেন্ডার', onTap: () => navigate('/exam-calendar')),
-                  _DrawerMenuItem(icon: Icons.menu_book_outlined, title: 'সেলফ স্টাডি & প্রশ্নব্যাংক', onTap: () => navigate('/preparation')),
+                  _DrawerMenuItem(
+                      icon: Icons.auto_awesome_outlined,
+                      title: 'Bidwaan AI',
+                      onTap: () => navigate('/biddyan-ai')),
+                  _DrawerMenuItem(
+                      icon: Icons.groups_outlined,
+                      title: 'এক্সাম ব্যাচ',
+                      onTap: () => navigate('/exam-batches')),
+                  _DrawerMenuItem(
+                      icon: Icons.calendar_month_outlined,
+                      title: 'এক্সাম ক্যালেন্ডার',
+                      onTap: () => navigate('/exam-calendar')),
+                  _DrawerMenuItem(
+                      icon: Icons.menu_book_outlined,
+                      title: 'সেলফ স্টাডি & প্রশ্নব্যাংক',
+                      onTap: () => navigate('/preparation')),
                   _DrawerMenuItem(
                     icon: Icons.auto_fix_high_outlined,
                     title: 'Make Dynamic Exam',
@@ -1690,19 +1776,46 @@ class DashboardDrawer extends ConsumerWidget {
                       }
                     },
                   ),
-                  _DrawerMenuItem(icon: Icons.library_books_outlined, title: 'বই ও রিসোর্স', onTap: () => navigate('/books')),
-                  _DrawerMenuItem(icon: Icons.edit_calendar_outlined, title: 'রুটিন / Study Plan', onTap: () => navigate('/routine')),
-                  _DrawerMenuItem(icon: Icons.forum_outlined, title: 'Group Study', onTap: () => showComingSoon('Group Study')),
+                  _DrawerMenuItem(
+                      icon: Icons.library_books_outlined,
+                      title: 'বই ও রিসোর্স',
+                      onTap: () => navigate('/books')),
+                  _DrawerMenuItem(
+                      icon: Icons.edit_calendar_outlined,
+                      title: 'রুটিন / Study Plan',
+                      onTap: () => navigate('/routine')),
+                  _DrawerMenuItem(
+                      icon: Icons.forum_outlined,
+                      title: 'Group Study',
+                      onTap: () => showComingSoon('Group Study')),
                   const SizedBox(height: 8),
                   const Divider(height: 1, indent: 12, endIndent: 12),
                   const SizedBox(height: 12),
                   const _DrawerSectionLabel('সহায়তা ও তথ্য'),
-                  _DrawerMenuItem(icon: Icons.support_agent_outlined, title: 'Contact Support', onTap: () => showComingSoon('Contact Support')),
-                  _DrawerMenuItem(icon: Icons.info_outline, title: 'About Us', onTap: () => showComingSoon('About Us')),
-                  _DrawerMenuItem(icon: Icons.fact_check_outlined, title: 'Terms & Conditions', onTap: () => showComingSoon('Terms & Conditions')),
-                  _DrawerMenuItem(icon: Icons.help_outline, title: 'FAQs', onTap: () => showComingSoon('FAQs')),
-                  _DrawerMenuItem(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () => showComingSoon('Privacy Policy')),
-                  _DrawerMenuItem(icon: Icons.gpp_good_outlined, title: 'Disclaimer', onTap: () => showComingSoon('Disclaimer')),
+                  _DrawerMenuItem(
+                      icon: Icons.support_agent_outlined,
+                      title: 'Contact Support',
+                      onTap: () => showComingSoon('Contact Support')),
+                  _DrawerMenuItem(
+                      icon: Icons.info_outline,
+                      title: 'About Us',
+                      onTap: () => showComingSoon('About Us')),
+                  _DrawerMenuItem(
+                      icon: Icons.fact_check_outlined,
+                      title: 'Terms & Conditions',
+                      onTap: () => showComingSoon('Terms & Conditions')),
+                  _DrawerMenuItem(
+                      icon: Icons.help_outline,
+                      title: 'FAQs',
+                      onTap: () => showComingSoon('FAQs')),
+                  _DrawerMenuItem(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy Policy',
+                      onTap: () => showComingSoon('Privacy Policy')),
+                  _DrawerMenuItem(
+                      icon: Icons.gpp_good_outlined,
+                      title: 'Disclaimer',
+                      onTap: () => showComingSoon('Disclaimer')),
                 ],
               ),
             ),
@@ -1751,16 +1864,33 @@ class DashboardDrawer extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('আমাদের সাথে যুক্ত থাকুন', style: TextStyle(fontSize: 11, color: AppConstants.mutedText)),
+                      const Text('আমাদের সাথে যুক্ত থাকুন',
+                          style: TextStyle(
+                              fontSize: 11, color: AppConstants.mutedText)),
                       const SizedBox(width: 6),
-                      _SocialButton(icon: FontAwesomeIcons.facebook, color: const Color(0xFF1877F2), url: Uri.parse('https://www.facebook.com/'), label: 'Facebook'),
-                      _SocialButton(icon: FontAwesomeIcons.youtube, color: const Color(0xFFFF0000), url: Uri.parse('https://www.youtube.com/'), label: 'YouTube'),
-                      _SocialButton(icon: FontAwesomeIcons.telegram, color: const Color(0xFF229ED9), url: Uri.parse('https://t.me/'), label: 'Telegram'),
+                      _SocialButton(
+                          icon: FontAwesomeIcons.facebook,
+                          color: const Color(0xFF1877F2),
+                          url: Uri.parse('https://www.facebook.com/'),
+                          label: 'Facebook'),
+                      _SocialButton(
+                          icon: FontAwesomeIcons.youtube,
+                          color: const Color(0xFFFF0000),
+                          url: Uri.parse('https://www.youtube.com/'),
+                          label: 'YouTube'),
+                      _SocialButton(
+                          icon: FontAwesomeIcons.telegram,
+                          color: const Color(0xFF229ED9),
+                          url: Uri.parse('https://t.me/'),
+                          label: 'Telegram'),
                     ],
                   ),
                   const Padding(
                     padding: EdgeInsets.only(bottom: 4),
-                    child: Text('All rights reserved by Softwaid.com | 2026', textAlign: TextAlign.center, style: TextStyle(color: AppConstants.mutedText, fontSize: 10)),
+                    child: Text('All rights reserved by Softwaid.com | 2026',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: AppConstants.mutedText, fontSize: 10)),
                   ),
                 ],
               ),
@@ -1782,13 +1912,17 @@ class _DrawerSectionLabel extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
         child: Text(
           title,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppConstants.mutedText),
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppConstants.mutedText),
         ),
       );
 }
 
 class _DrawerMenuItem extends StatelessWidget {
-  const _DrawerMenuItem({required this.icon, required this.title, required this.onTap});
+  const _DrawerMenuItem(
+      {required this.icon, required this.title, required this.onTap});
 
   final IconData icon;
   final String title;
@@ -1810,12 +1944,22 @@ class _DrawerMenuItem extends StatelessWidget {
                   Container(
                     width: 34,
                     height: 34,
-                    decoration: BoxDecoration(color: const Color(0xFFE5F0EF), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFE5F0EF),
+                        borderRadius: BorderRadius.circular(10)),
                     child: Icon(icon, size: 18, color: AppConstants.primary),
                   ),
                   const SizedBox(width: 11),
-                  Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF24383A)))),
-                  const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8A9997)),
+                  Expanded(
+                      child: Text(title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF24383A)))),
+                  const Icon(Icons.chevron_right,
+                      size: 18, color: Color(0xFF8A9997)),
                 ],
               ),
             ),
@@ -1843,7 +1987,8 @@ class _DrawerFooterAction extends StatelessWidget {
         icon: Icon(icon, size: 17),
         label: Text(label),
         style: TextButton.styleFrom(
-          foregroundColor: destructive ? AppConstants.accent : AppConstants.primary,
+          foregroundColor:
+              destructive ? AppConstants.accent : AppConstants.primary,
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
           textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),

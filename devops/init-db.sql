@@ -230,8 +230,22 @@ CREATE TABLE users (
     preparation_categories TEXT[] NOT NULL DEFAULT '{}',
     notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     preferred_language VARCHAR(30) NOT NULL DEFAULT 'বাংলা',
+    institution_type VARCHAR(20),
+    institution_name VARCHAR(180),
+    location VARCHAR(180),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(50) NOT NULL DEFAULT 'সাধারণ',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_notifications_created_at
+    ON notifications(created_at DESC);
 
 ALTER TABLE exams ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_exams_created_by ON exams(created_by);
@@ -242,6 +256,8 @@ CREATE TABLE exam_batches (
     exam_type VARCHAR(100) NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     image_url TEXT,
+    price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (price >= 0),
+    demo_exam_ids UUID[] NOT NULL DEFAULT '{}',
     sort_order INTEGER NOT NULL DEFAULT 0,
     is_published BOOLEAN NOT NULL DEFAULT TRUE,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -267,6 +283,34 @@ CREATE TABLE exam_batch_enrollments (
 );
 
 CREATE INDEX idx_exam_batch_enrollments_user ON exam_batch_enrollments(user_id, enrolled_at DESC);
+
+CREATE TABLE exam_batch_payment_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    batch_id UUID NOT NULL REFERENCES exam_batches(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(16) NOT NULL CHECK (provider IN ('bkash', 'nagad', 'rocket')),
+    receiver_number VARCHAR(20) NOT NULL DEFAULT '01301051585',
+    pay_type VARCHAR(20) NOT NULL DEFAULT 'send_money' CHECK (pay_type = 'send_money'),
+    amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
+    paid_from_number VARCHAR(20) NOT NULL,
+    transaction_id VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'approved', 'failed')),
+    review_note TEXT,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_exam_batch_payment_transaction
+    ON exam_batch_payment_requests (provider, UPPER(transaction_id));
+
+CREATE UNIQUE INDEX idx_exam_batch_payment_one_pending
+    ON exam_batch_payment_requests (batch_id, user_id)
+    WHERE status = 'pending';
+
+CREATE INDEX idx_exam_batch_payment_status_created
+    ON exam_batch_payment_requests (status, created_at DESC);
 
 -- 6. Persistent student study plans
 CREATE TABLE study_plans (

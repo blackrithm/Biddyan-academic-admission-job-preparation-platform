@@ -1,11 +1,11 @@
 {
-    "name": "বিদ্বান",
-    "short_name": "বিদ্বান",
+    "name": "Bidwaan",
+    "short_name": "Bidwaan",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "বিদ্বান — Academic, Admission & Job Preparation Platform",
+    "background_color": "#FFFFFF",
+    "theme_color": "#00343A",
+    "description": "বিদ্বান - Bidwaan Academic, Admission & Job Preparation Bangladesh's Edtech Platform.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

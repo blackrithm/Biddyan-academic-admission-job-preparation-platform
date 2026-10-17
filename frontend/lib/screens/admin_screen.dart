@@ -23,6 +23,7 @@ class AdminScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton(),
         title: const Text('অ্যাডমিন প্যানেল'),
         actions: [
           IconButton(
@@ -47,14 +48,42 @@ class _AdminManagementHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = [
-      _AdminOption('পরীক্ষা পরিচালনা', 'Exam তৈরি, প্রশ্ন সেট ও সময় manage করুন', Icons.assignment_outlined, '/admin/exams'),
-      _AdminOption('এক্সাম ব্যাচ', 'বিভিন্ন ধরনের batch ও exam schedule তৈরি করুন', Icons.groups_outlined, '/admin/exam-batches'),
-      _AdminOption('Photo & Share', 'ছবি, banner ও media share করুন', Icons.photo_library_outlined, '/admin/media'),
-      _AdminOption('সব MCQ পরিচালনা', 'MCQ edit, update ও question bank manage করুন', Icons.quiz_outlined, '/admin/mcqs'),
-      _AdminOption('Notification পরিচালনা', 'শিক্ষার্থীদের notice publish করুন', Icons.notifications_active_outlined, '/admin/notifications'),
-      _AdminOption('Books, PDF & Materials', 'Book, PDF ও study material যোগ করুন', Icons.menu_book_outlined, '/admin/materials'),
-      _AdminOption('Question Bank', 'Question set upload ও manage করুন', Icons.library_books_outlined, '/admin/question-bank'),
-      _AdminOption('Exam Result Manage & Edit', 'পরীক্ষার ফলাফল দেখুন ও edit করুন', Icons.fact_check_outlined, '/admin/results'),
+      _AdminOption(
+          'পরীক্ষা পরিচালনা',
+          'Exam তৈরি, প্রশ্ন সেট ও সময় manage করুন',
+          Icons.assignment_outlined,
+          '/admin/exams'),
+      _AdminOption(
+          'এক্সাম ব্যাচ',
+          'বিভিন্ন ধরনের batch ও exam schedule তৈরি করুন',
+          Icons.groups_outlined,
+          '/admin/exam-batches'),
+      _AdminOption(
+          'Exam Batch Enrollers',
+          'মোবাইল পেমেন্ট যাচাই করে approve বা fail করুন',
+          Icons.payments_outlined,
+          '/admin/exam-batch-enrollers'),
+      _AdminOption('Photo & Share', 'ছবি, banner ও media share করুন',
+          Icons.photo_library_outlined, '/admin/media'),
+      _AdminOption(
+          'সব MCQ পরিচালনা',
+          'MCQ edit, update ও question bank manage করুন',
+          Icons.quiz_outlined,
+          '/admin/mcqs'),
+      _AdminOption('Notification পরিচালনা', 'শিক্ষার্থীদের notice publish করুন',
+          Icons.notifications_active_outlined, '/admin/notifications'),
+      _AdminOption(
+          'Books, PDF & Materials',
+          'Book, PDF ও study material যোগ করুন',
+          Icons.menu_book_outlined,
+          '/admin/materials'),
+      _AdminOption('Question Bank', 'Question set upload ও manage করুন',
+          Icons.library_books_outlined, '/admin/question-bank'),
+      _AdminOption(
+          'Exam Result Manage & Edit',
+          'পরীক্ষার ফলাফল দেখুন ও edit করুন',
+          Icons.fact_check_outlined,
+          '/admin/results'),
     ];
     return LayoutBuilder(
       builder: (context, constraints) => ListView(
@@ -62,19 +91,24 @@ class _AdminManagementHub extends StatelessWidget {
         children: [
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
-            child: Text('কী পরিচালনা করবেন?', style: Theme.of(context).textTheme.headlineSmall),
+            child: Text('কী পরিচালনা করবেন?',
+                style: Theme.of(context).textTheme.headlineSmall),
           ),
           const SizedBox(height: 4),
-          const Text('একটি section নির্বাচন করলে সেটি আলাদা management page-এ খুলবে.'),
+          const Text(
+              'একটি section নির্বাচন করলে সেটি আলাদা management page-এ খুলবে.'),
           const SizedBox(height: 14),
           for (final option in options) ...[
             Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 minTileHeight: 64,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                leading: CircleAvatar(radius: 20, child: Icon(option.icon, size: 21)),
-                title: Text(option.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                leading: CircleAvatar(
+                    radius: 20, child: Icon(option.icon, size: 21)),
+                title: Text(option.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text(option.description),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push(option.path),
@@ -152,8 +186,8 @@ class _TabbedAdminState extends ConsumerState<_TabbedAdmin> {
                     ? AdminQuestionForm(topics: rows)
                     : _section == 2
                         ? AdminExamForm(
-                        topics: rows,
-                        onCreated: () => ref.invalidate(examsProvider),
+                            topics: rows,
+                            onCreated: () => ref.invalidate(examsProvider),
                           )
                         : AdminQuestionBank(topics: rows),
             loading: () => const Center(child: CircularProgressIndicator()),

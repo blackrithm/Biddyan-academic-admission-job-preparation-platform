@@ -1,4 +1,4 @@
-/// Serializable domain models for the Biddyan client.
+/// Serializable domain models for the Bidwaan client.
 ///
 /// All models mirror the JSON payloads produced by the Node.js/Express
 /// backend (see `backend/src/controllers/*`).
@@ -29,7 +29,7 @@ class AuthUser {
       phoneNumber: (user['phoneNumber'] as String?) ?? '',
       displayName: (user['displayName'] as String?) ??
           (user['email'] as String?) ??
-          'Biddyan User',
+          'Bidwaan User',
       role: (user['role'] as String?) ?? 'student',
       email: user['email'] as String?,
     );
@@ -46,6 +46,9 @@ class UserProfile {
     this.preparationCategories = const [],
     this.notificationsEnabled = true,
     this.preferredLanguage = 'বাংলা',
+    this.institutionType,
+    this.institutionName,
+    this.location,
   });
 
   final String id;
@@ -56,6 +59,9 @@ class UserProfile {
   final List<String> preparationCategories;
   final bool notificationsEnabled;
   final String preferredLanguage;
+  final String? institutionType;
+  final String? institutionName;
+  final String? location;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
         id: json['id'] as String,
@@ -69,6 +75,9 @@ class UserProfile {
                 .toList(),
         notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
         preferredLanguage: json['preferred_language'] as String? ?? 'বাংলা',
+        institutionType: json['institution_type'] as String?,
+        institutionName: json['institution_name'] as String?,
+        location: json['location'] as String?,
       );
 }
 
@@ -105,21 +114,18 @@ class ProfileStats {
         totalExams: (json['total_exams'] as num?)?.toInt() ?? 0,
         totalQuestionsRead:
             (json['total_questions_read'] as num?)?.toInt() ?? 0,
-        totalPracticeExams: (json['total_practice_exams'] as num?)?.toInt() ?? 0,
+        totalPracticeExams:
+            (json['total_practice_exams'] as num?)?.toInt() ?? 0,
         totalLiveExams: (json['total_live_exams'] as num?)?.toInt() ?? 0,
         totalPassedExams: (json['total_passed_exams'] as num?)?.toInt() ?? 0,
         failedOrIncompleteExams:
-          (json['failed_or_incomplete_exams'] as num?)?.toInt() ?? 0,
-        totalRightAnswers:
-          (json['total_right_answers'] as num?)?.toInt() ?? 0,
-        totalWrongAnswers:
-          (json['total_wrong_answers'] as num?)?.toInt() ?? 0,
+            (json['failed_or_incomplete_exams'] as num?)?.toInt() ?? 0,
+        totalRightAnswers: (json['total_right_answers'] as num?)?.toInt() ?? 0,
+        totalWrongAnswers: (json['total_wrong_answers'] as num?)?.toInt() ?? 0,
         totalSkippedAnswers:
-          (json['total_skipped_answers'] as num?)?.toInt() ?? 0,
-        totalStudyMinutes:
-          (json['total_study_minutes'] as num?)?.toInt() ?? 0,
-        totalContribution:
-          (json['total_contribution'] as num?)?.toInt() ?? 0,
+            (json['total_skipped_answers'] as num?)?.toInt() ?? 0,
+        totalStudyMinutes: (json['total_study_minutes'] as num?)?.toInt() ?? 0,
+        totalContribution: (json['total_contribution'] as num?)?.toInt() ?? 0,
         overallRank: (json['overall_rank'] as num?)?.toInt(),
       );
 }
@@ -299,6 +305,7 @@ class WrittenQuestion {
     this.topicName,
     this.examType,
     this.questionSet,
+    this.previousYears = const [],
   });
 
   final String id;
@@ -314,8 +321,10 @@ class WrittenQuestion {
   final String? topicName;
   final String? examType;
   final String? questionSet;
+  final List<String> previousYears;
 
-  factory WrittenQuestion.fromJson(Map<String, dynamic> json) => WrittenQuestion(
+  factory WrittenQuestion.fromJson(Map<String, dynamic> json) =>
+      WrittenQuestion(
         id: json['id'] as String,
         topicId: json['topic_id'] as String,
         questionText: json['question_text'] as String,
@@ -329,6 +338,9 @@ class WrittenQuestion {
         topicName: json['topic_name'] as String?,
         examType: json['exam_type'] as String?,
         questionSet: json['question_set'] as String?,
+        previousYears: (json['previous_years'] as List<dynamic>? ?? const [])
+            .map((year) => year as String)
+            .toList(),
       );
 }
 
@@ -380,7 +392,7 @@ class Exam {
       questions: (json['questions'] as List<dynamic>? ?? const [])
           .map((e) => Question.fromJson(e as Map<String, dynamic>))
           .toList(),
-        questionCount: (json['question_count'] as num?)?.toInt(),
+      questionCount: (json['question_count'] as num?)?.toInt(),
     );
   }
 

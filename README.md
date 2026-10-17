@@ -1,8 +1,8 @@
-# বিদ্বান
+# Bidwaan
 
-**বিদ্বান (Biddyan) - Academic, Admission & Job Preparation Platform**
+**বিদ্বান (Bidwaan) - Academic, Admission & Job Preparation Platform**
 
-Biddyan is a Bengali-first preparation platform for academic, admission, BCS,
+Bidwaan is a Bengali-first preparation platform for academic, admission, BCS,
 bank, and government job examinations. It includes a Flutter client, a
 TypeScript/Express API, PostgreSQL persistence, and Redis-powered leaderboards.
 
@@ -60,6 +60,9 @@ npm start
 ```
 
 The API listens on port `5000` by default.
+For an existing database, apply `devops/migrate-exam-batch-payments.sql` before
+starting the updated API. Mobile-wallet submissions remain pending until an
+admin verifies and approves them.
 
 ## Run the full stack with Docker
 

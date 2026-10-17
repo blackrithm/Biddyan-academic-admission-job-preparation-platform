@@ -159,18 +159,28 @@ class _SubjectCatalogScreenState extends ConsumerState<SubjectCatalogScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _TopicBrowser(
-                        roots: filtered,
+                      _CatalogTopicSection(
+                        title: 'MCQ Section',
+                        emptyMessage: 'এই category-তে কোনো MCQ topic নেই।',
+                        roots: _topicsByQuestionType(filtered, 'mcq'),
                         questions: snapshot.data!.questions,
                         writtenQuestions: snapshot.data!.writtenQuestions,
                         autoOpenCreate: widget.createExam,
                       ),
-                      if (filtered.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(32),
-                          child:
-                              Center(child: Text('কোনো বিষয় পাওয়া যায়নি')),
+                      const SizedBox(height: 20),
+                      _CatalogTopicSection(
+                        title: 'Written Section',
+                        emptyMessage: 'এই category-তে কোনো Written topic নেই।',
+                        roots: _topicsByQuestionType(filtered, 'written'),
+                        questions: snapshot.data!.questions,
+                        writtenQuestions: snapshot.data!.writtenQuestions,
+                      ),
+                      if (filtered.isEmpty) ...[
+                        const SizedBox(height: 24),
+                        const Center(
+                          child: Text('কোনো বিষয় পাওয়া যায়নি'),
                         ),
+                      ],
                     ],
                   ),
                 ),
@@ -225,6 +235,73 @@ class _CatalogData {
   final List<TopicNode> topics;
   final List<Question> questions;
   final List<WrittenQuestion> writtenQuestions;
+}
+
+List<TopicNode> _topicsByQuestionType(List<TopicNode> nodes, String type) {
+  final matchingTopics = <TopicNode>[];
+  for (final node in nodes) {
+    final matchingChildren = _topicsByQuestionType(node.children, type);
+    if (node.questionType != type && matchingChildren.isEmpty) continue;
+    matchingTopics.add(
+      TopicNode(
+        id: node.id,
+        name: node.name,
+        parentId: node.parentId,
+        questionType: type,
+        children: matchingChildren,
+      ),
+    );
+  }
+  return matchingTopics;
+}
+
+class _CatalogTopicSection extends StatelessWidget {
+  const _CatalogTopicSection({
+    required this.title,
+    required this.emptyMessage,
+    required this.roots,
+    required this.questions,
+    required this.writtenQuestions,
+    this.autoOpenCreate = false,
+  });
+
+  final String title;
+  final String emptyMessage;
+  final List<TopicNode> roots;
+  final List<Question> questions;
+  final List<WrittenQuestion> writtenQuestions;
+  final bool autoOpenCreate;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppConstants.primary,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (roots.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              child: Center(child: Text(emptyMessage)),
+            )
+          else
+            _TopicBrowser(
+              roots: roots,
+              questions: questions,
+              writtenQuestions: writtenQuestions,
+              autoOpenCreate: autoOpenCreate,
+            ),
+        ],
+      );
 }
 
 class _CategoryTabs extends StatefulWidget {
@@ -313,7 +390,7 @@ class _CategoryTabsState extends State<_CategoryTabs> {
                       ),
                       onSelected: (selected) {
                         if (!selected) return;
-                        context.go(
+                        context.pushReplacement(
                           '/subject-catalog?category=${Uri.encodeComponent(name)}',
                         );
                       },
@@ -764,6 +841,15 @@ class _TopicBrowserState extends State<_TopicBrowser> {
   void initState() {
     super.initState();
     _level = widget.roots;
+  }
+
+  @override
+  void didUpdateWidget(covariant _TopicBrowser oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.roots, widget.roots)) {
+      _level = widget.roots;
+      _history.clear();
+    }
   }
 
   @override

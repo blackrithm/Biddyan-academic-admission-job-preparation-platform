@@ -8,20 +8,20 @@ import '../core/constants.dart';
 import '../widgets/brand_navigation.dart';
 import 'mobile_dashboard.dart';
 
-class BiddyanAiScreen extends StatefulWidget {
-  const BiddyanAiScreen({super.key});
+class BidwaanAiScreen extends StatefulWidget {
+  const BidwaanAiScreen({super.key});
 
   @override
-  State<BiddyanAiScreen> createState() => _BiddyanAiScreenState();
+  State<BidwaanAiScreen> createState() => _BidwaanAiScreenState();
 }
 
-class _BiddyanAiScreenState extends State<BiddyanAiScreen> {
+class _BidwaanAiScreenState extends State<BidwaanAiScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final _picker = ImagePicker();
   final _messages = <_AiMessage>[
     const _AiMessage(
-      text: 'আসসালামু আলাইকুম! আমি বিদ্বান AI। পড়াশোনার প্রশ্ন, MCQ, সূত্র বা কোনো কঠিন বিষয় বুঝতে আমাকে জিজ্ঞেস করুন।',
+      text: 'আসসালামু আলাইকুম! আমি Bidwaan AI। পড়াশোনার প্রশ্ন, MCQ, সূত্র বা কোনো কঠিন বিষয় বুঝতে আমাকে জিজ্ঞেস করুন।',
       fromUser: false,
     ),
   ];
@@ -334,7 +334,7 @@ class _AiIntroIdentity extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('বিদ্বান AI', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppConstants.primary)),
+              Text('Bidwaan AI', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppConstants.primary)),
               SizedBox(height: 2),
               Text('আপনার পড়াশোনার সঙ্গী', style: TextStyle(fontSize: 12, color: AppConstants.mutedText)),
             ],

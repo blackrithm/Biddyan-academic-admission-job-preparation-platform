@@ -207,7 +207,7 @@ class _PreviousQuestionBankScreenState
         ],
       ),
       bottomNavigationBar: BrandBottomNavigation(
-        selectedIndex: 1,
+        selectedIndex: 2,
         onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );

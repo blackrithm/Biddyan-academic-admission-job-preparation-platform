@@ -235,10 +235,16 @@ export class ExamController {
         ) AS has_access,
         EXISTS (
           SELECT 1 FROM exam_batch_exams be WHERE be.exam_id = $1
-        ) AS is_batch_exam
+        ) AS is_batch_exam,
+        EXISTS (
+          SELECT 1 FROM exam_batch_exams be
+          JOIN exam_batches b ON b.id = be.batch_id
+          WHERE be.exam_id = $1 AND b.demo_exam_ids @> ARRAY[$1::uuid]
+            AND NOW() >= be.starts_at AND NOW() < be.ends_at
+        ) AS is_demo
       `, [examId, (req as AuthenticatedRequest).auth?.userId ?? null]);
       const batchStatus = batchAccess.rows[0];
-      if (batchStatus.is_batch_exam && !batchStatus.has_access) {
+      if (batchStatus.is_batch_exam && !batchStatus.has_access && !batchStatus.is_demo) {
         await client.query('ROLLBACK');
         return res.status(403).json({ error: 'Batch exam শুধু enrolled শিক্ষার্থীরা নির্ধারিত সময়ে দিতে পারবেন' });
       }
@@ -480,10 +486,16 @@ export class ExamController {
         ) AS has_access,
         EXISTS (
           SELECT 1 FROM exam_batch_exams be WHERE be.exam_id = $1
-        ) AS is_batch_exam
+        ) AS is_batch_exam,
+        EXISTS (
+          SELECT 1 FROM exam_batch_exams be
+          JOIN exam_batches b ON b.id = be.batch_id
+          WHERE be.exam_id = $1 AND b.demo_exam_ids @> ARRAY[$1::uuid]
+            AND NOW() >= be.starts_at AND NOW() < be.ends_at
+        ) AS is_demo
       `, [examId, (req as AuthenticatedRequest).auth?.userId ?? null]);
       const batchStatus = batchAccess.rows[0];
-      if (batchStatus.is_batch_exam && !batchStatus.has_access) {
+      if (batchStatus.is_batch_exam && !batchStatus.has_access && !batchStatus.is_demo) {
         return res.status(403).json({ error: 'Batch exam শুধু enrolled শিক্ষার্থীরা নির্ধারিত সময়ে খুলতে পারবেন' });
       }
 

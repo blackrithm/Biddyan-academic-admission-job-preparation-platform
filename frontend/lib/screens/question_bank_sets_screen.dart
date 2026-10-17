@@ -18,9 +18,17 @@ class QuestionBankSetsScreen extends StatefulWidget {
   State<QuestionBankSetsScreen> createState() => _QuestionBankSetsScreenState();
 }
 
+enum _QuestionBankSetType { mcq, written }
+
+const _allSubjectsValue = '__all_subjects__';
+const _allYearsValue = '';
+
 class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
   late Future<_QuestionBankPageData> _data;
   String _search = '';
+  String? _selectedSubjectId;
+  String _selectedExamYear = _allYearsValue;
+  _QuestionBankSetType _selectedSetType = _QuestionBankSetType.mcq;
 
   @override
   void initState() {
@@ -28,50 +36,66 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
     _data = _load();
   }
 
+  @override
+  void didUpdateWidget(covariant QuestionBankSetsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.category != widget.category) {
+      _data = _load();
+      _selectedSubjectId = null;
+      _selectedExamYear = _allYearsValue;
+      _search = '';
+    }
+  }
+
   Future<_QuestionBankPageData> _load() async {
     final topics = await TopicService(apiClient).getTree();
     final questions = await QuestionService(apiClient).list();
     final writtenQuestions = await WrittenQuestionService(apiClient).list();
     final exams = await ExamService(apiClient).list();
-    final topicIds = <String>{};
-    final target = _alias(widget.category).toLowerCase();
-
-    void collect(TopicNode node) {
-      topicIds.add(node.id);
-      for (final child in node.children) {
-        collect(child);
-      }
-    }
-
-    void visit(List<TopicNode> nodes) {
-      for (final node in nodes) {
-        if (node.name.toLowerCase() == target) collect(node);
-        visit(node.children);
-      }
-    }
-
-    visit(topics);
-    final categoryName = target.toLowerCase();
-    final filtered = questions.where((question) {
-      return topicIds.contains(question.topicId) ||
-          question.topicName?.toLowerCase() == categoryName;
-    }).toList();
-    final filteredWritten = writtenQuestions
-        .where((question) => topicIds.contains(question.topicId))
-        .toList();
     return _QuestionBankPageData(
-      questions: filtered,
-      writtenQuestions: filteredWritten,
+      topics: topics,
+      questions: questions,
+      writtenQuestions: writtenQuestions,
       exams: exams,
     );
   }
 
-  String _alias(String category) {
-    return switch (category) {
-      'BCS প্রস্তুতি' => 'BCS',
-      'ব্যাংক জব' => 'Bank',
-      _ => category,
-    };
+  List<_SubjectOption> _subjectOptions(List<TopicNode> roots) {
+    final options = <_SubjectOption>[];
+    void visit(List<TopicNode> nodes, String? parentPath) {
+      for (final topic in nodes) {
+        final label = parentPath == null
+            ? topic.name
+            : '$parentPath / ${topic.name}';
+        options.add(_SubjectOption(topic: topic, label: label));
+        visit(topic.children, label);
+      }
+    }
+
+    visit(roots, null);
+    return options;
+  }
+
+  Set<String> _descendantTopicIds(TopicNode topic) {
+    final ids = <String>{topic.id};
+    for (final child in topic.children) {
+      ids.addAll(_descendantTopicIds(child));
+    }
+    return ids;
+  }
+
+  String _normalizeSubject(String subject) => switch (subject.trim().toLowerCase()) {
+        'bcs প্রস্তুতি' => 'bcs',
+        'ব্যাংক জব' => 'bank',
+        _ => subject.trim().toLowerCase(),
+      };
+
+  _SubjectOption? _defaultSubject(List<_SubjectOption> subjects) {
+    final target = _normalizeSubject(widget.category);
+    for (final subject in subjects) {
+      if (_normalizeSubject(subject.topic.name) == target) return subject;
+    }
+    return null;
   }
 
   @override
@@ -86,33 +110,80 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final questions = snapshot.data?.questions ?? const <Question>[];
-          final writtenQuestions = snapshot.data?.writtenQuestions ?? const <WrittenQuestion>[];
-          final exams = snapshot.data?.exams ?? const <Exam>[];
+          final data = snapshot.data!;
+          final questions = data.questions;
+          final writtenQuestions = data.writtenQuestions;
+          final exams = data.exams;
+          final subjects = _subjectOptions(data.topics);
+          final defaultSubject = _defaultSubject(subjects);
+          final selectedSubjectId = _selectedSubjectId ??
+              defaultSubject?.topic.id ??
+              _allSubjectsValue;
+          _SubjectOption? selectedSubject;
+          for (final subject in subjects) {
+            if (subject.topic.id == selectedSubjectId) {
+              selectedSubject = subject;
+              break;
+            }
+          }
+          final selectedTopicIds = selectedSubject == null
+              ? null
+              : _descendantTopicIds(selectedSubject.topic);
+          final subjectQuestions = questions.where((question) =>
+              selectedTopicIds == null ||
+              selectedTopicIds.contains(question.topicId));
+          final subjectWrittenQuestions = writtenQuestions.where((question) =>
+              selectedTopicIds == null ||
+              selectedTopicIds.contains(question.topicId));
+          final examYears = <String>{
+            if (_selectedSetType == _QuestionBankSetType.mcq)
+              for (final question in subjectQuestions)
+                ...question.previousYears.where((year) => year.trim().isNotEmpty),
+            if (_selectedSetType == _QuestionBankSetType.written)
+              for (final question in subjectWrittenQuestions)
+                ...question.previousYears.where((year) => year.trim().isNotEmpty),
+          }.toList()
+            ..sort();
+          final selectedExamYear = examYears.contains(_selectedExamYear)
+              ? _selectedExamYear
+              : _allYearsValue;
+          final filteredQuestions = subjectQuestions.where((question) =>
+              selectedExamYear == _allYearsValue ||
+              question.previousYears.contains(selectedExamYear));
+          final filteredWrittenQuestions = subjectWrittenQuestions.where((question) =>
+              selectedExamYear == _allYearsValue ||
+              question.previousYears.contains(selectedExamYear));
           final sets = <String, List<Question>>{};
-          for (final question in questions) {
+          for (final question in filteredQuestions) {
             final name = question.questionSet?.trim();
             if (name != null && name.isNotEmpty) {
               sets.putIfAbsent(name, () => []).add(question);
             }
           }
           final writtenSets = <String, List<WrittenQuestion>>{};
-          for (final question in writtenQuestions) {
+          for (final question in filteredWrittenQuestions) {
             final key = question.setId ??
                 'legacy:${question.topicId}:${question.questionSet ?? question.id}';
             writtenSets.putIfAbsent(key, () => []).add(question);
           }
           final query = _search.trim().toLowerCase();
-          final visibleSets = sets.entries
+            final matchingMcqSets = sets.entries
               .where((entry) => entry.key.toLowerCase().contains(query))
               .toList();
-          final visibleWrittenSets = writtenSets.entries.where((entry) {
+            final matchingWrittenSets = writtenSets.entries.where((entry) {
             final question = entry.value.first;
             final title = question.setTitle.isNotEmpty
                 ? question.setTitle
                 : question.questionSet ?? 'Written set';
             return title.toLowerCase().contains(query);
           }).toList();
+            final visibleSets = _selectedSetType == _QuestionBankSetType.mcq
+              ? matchingMcqSets
+              : const <MapEntry<String, List<Question>>>[];
+            final visibleWrittenSets =
+              _selectedSetType == _QuestionBankSetType.written
+                ? matchingWrittenSets
+                : const <MapEntry<String, List<WrittenQuestion>>>[];
           return ListView(
             padding: const EdgeInsets.fromLTRB(0, 14, 0, 24),
             children: [
@@ -121,7 +192,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Text(
-                    '${widget.category} Question Sets',
+                    '${selectedSubject?.label ?? 'All Subjects'} Question Sets',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -137,8 +208,105 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('${widget.category} Question Sets',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final subjectField = DropdownButtonFormField<String>(
+                          value: selectedSubjectId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Subject Name',
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          items: [
+                            const DropdownMenuItem(
+                              value: _allSubjectsValue,
+                              child: Text('All Subjects'),
+                            ),
+                            for (final subject in subjects)
+                              DropdownMenuItem(
+                                value: subject.topic.id,
+                                child: Text(
+                                  subject.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() {
+                            _selectedSubjectId = value;
+                            _selectedExamYear = _allYearsValue;
+                          }),
+                        );
+                        final questionTypeField = SegmentedButton<_QuestionBankSetType>(
+                          segments: const [
+                            ButtonSegment(
+                              value: _QuestionBankSetType.mcq,
+                              label: Text('MCQ Set'),
+                            ),
+                            ButtonSegment(
+                              value: _QuestionBankSetType.written,
+                              label: Text('Written Set'),
+                            ),
+                          ],
+                          selected: {_selectedSetType},
+                          showSelectedIcon: false,
+                          onSelectionChanged: (selection) => setState(() {
+                            _selectedSetType = selection.first;
+                            _selectedExamYear = _allYearsValue;
+                          }),
+                        );
+                        final yearField = DropdownButtonFormField<String>(
+                          value: selectedExamYear,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Exam Year',
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          items: [
+                            const DropdownMenuItem(
+                              value: _allYearsValue,
+                              child: Text('All Years'),
+                            ),
+                            for (final year in examYears)
+                              DropdownMenuItem(
+                                value: year,
+                                child: Text(year),
+                              ),
+                          ],
+                          onChanged: (value) => setState(
+                            () => _selectedExamYear = value ?? _allYearsValue,
+                          ),
+                        );
+
+                        if (constraints.maxWidth < 560) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              subjectField,
+                              const SizedBox(height: 10),
+                              questionTypeField,
+                              const SizedBox(height: 10),
+                              yearField,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(flex: 3, child: subjectField),
+                            const SizedBox(width: 10),
+                            Expanded(flex: 3, child: questionTypeField),
+                            const SizedBox(width: 10),
+                            Expanded(flex: 2, child: yearField),
+                          ],
+                        );
+                      },
+                    ),
                     const SizedBox(height: 10),
                     TextField(
                       onChanged: (value) => setState(() => _search = value),
@@ -158,7 +326,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                 const Card(
                   child: Padding(
                     padding: EdgeInsets.all(18),
-                    child: Text('এই category-তে কোনো question set পাওয়া যায়নি।'),
+                    child: Text('এই filter-এ কোনো question set পাওয়া যায়নি।'),
                   ),
                 ),
               for (final entry in visibleSets)
@@ -173,7 +341,12 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                         Text(entry.key, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 5),
                         Text('প্রশ্ন ব্যাংক: ${entry.value.length}টি প্রশ্ন', style: const TextStyle(color: AppConstants.mutedText)),
-                        if (_examForSet(exams, entry.key) case final exam?)
+                        if (_examForSet(
+                              exams,
+                              entry.key,
+                              selectedSubject?.topic.name ?? widget.category,
+                            )
+                            case final exam?)
                           Text(
                             'মোট ${exam.totalMarks.toStringAsFixed(0)} নম্বর • ভুল উত্তরে ${exam.negativeMarking} কাটা যাবে',
                             style: const TextStyle(color: AppConstants.mutedText),
@@ -196,7 +369,12 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                               child: SizedBox(
                                 height: 44,
                                 child: FilledButton(
-                                  onPressed: () => _startExam(context, entry.key, entry.value),
+                                  onPressed: () => _startExam(
+                                    context,
+                                    selectedSubject?.topic.name ?? widget.category,
+                                    entry.key,
+                                    entry.value,
+                                  ),
                                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE2E7EF), foregroundColor: const Color(0xFF202938), elevation: 0),
                                   child: const Text('Start Exam'),
                                 ),
@@ -209,11 +387,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
                   ),
                 ),
               if (visibleWrittenSets.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  child: Text('Written Question Sets', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                ),
+                  const SizedBox(height: 12),
                 for (final entry in visibleWrittenSets)
                   _WrittenSetCard(
                     questions: entry.value,
@@ -229,7 +403,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
         },
       ),
       bottomNavigationBar: BrandBottomNavigation(
-        selectedIndex: 1,
+        selectedIndex: 2,
         onSelected: (index) => BrandBottomNavigation.navigate(context, index),
       ),
     );
@@ -260,6 +434,7 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
 
   Future<void> _startExam(
     BuildContext context,
+    String subjectName,
     String name,
     List<Question> questions,
   ) async {
@@ -268,13 +443,14 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
       final existingExam = _examForSet(
         (await ExamService(apiClient).list()),
         name,
+        subjectName,
       );
       if (existingExam != null && context.mounted) {
         context.push('/exam/${existingExam.id}');
         return;
       }
       final exam = await ExamService(apiClient).createFromQuestionSet(
-        title: '${widget.category} - $name',
+        title: '$subjectName - $name',
         topicId: questions.first.topicId,
         questionIds: questions.map((question) => question.id).toList(),
         totalMarks: questions.length.toDouble(),
@@ -290,9 +466,9 @@ class _QuestionBankSetsScreenState extends State<QuestionBankSetsScreen> {
     }
   }
 
-  Exam? _examForSet(List<Exam> exams, String name) {
+  Exam? _examForSet(List<Exam> exams, String name, String subjectName) {
     for (final exam in exams) {
-      if (exam.title == name || exam.title == '${widget.category} - $name') {
+      if (exam.title == name || exam.title == '$subjectName - $name') {
         return exam;
       }
     }
@@ -325,14 +501,23 @@ class _QuestionSetReaderPage extends StatelessWidget {
 
 class _QuestionBankPageData {
   const _QuestionBankPageData({
+    required this.topics,
     required this.questions,
     required this.writtenQuestions,
     required this.exams,
   });
 
+  final List<TopicNode> topics;
   final List<Question> questions;
   final List<WrittenQuestion> writtenQuestions;
   final List<Exam> exams;
+}
+
+class _SubjectOption {
+  const _SubjectOption({required this.topic, required this.label});
+
+  final TopicNode topic;
+  final String label;
 }
 
 class _WrittenSetCard extends StatelessWidget {

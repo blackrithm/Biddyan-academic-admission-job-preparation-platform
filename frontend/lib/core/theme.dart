@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'constants.dart';
 
-/// Global Biddyan brand theme.
+/// Global Bidwaan brand theme.
 ///
 /// Uses a deep teal brand, warm white surfaces, and vivid red actions inspired
 /// by the reference learning-platform visual.
@@ -28,6 +28,15 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: AppConstants.background,
       visualDensity: VisualDensity.adaptivePlatformDensity,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _BidwaanPageTransitionsBuilder(),
+          TargetPlatform.iOS: _BidwaanPageTransitionsBuilder(),
+          TargetPlatform.linux: _BidwaanPageTransitionsBuilder(),
+          TargetPlatform.macOS: _BidwaanPageTransitionsBuilder(),
+          TargetPlatform.windows: _BidwaanPageTransitionsBuilder(),
+        },
+      ),
       textTheme: const TextTheme(
         headlineSmall: TextStyle(
           color: AppConstants.primary,
@@ -173,6 +182,34 @@ class AppTheme {
         color: AppConstants.primary,
         linearTrackColor: Color(0xFFE2E8F0),
       ),
+    );
+  }
+}
+
+class _BidwaanPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _BidwaanPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final transition = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    final position = Tween<Offset>(
+      begin: const Offset(0.035, 0),
+      end: Offset.zero,
+    ).animate(transition);
+
+    return FadeTransition(
+      opacity: transition,
+      child: SlideTransition(position: position, child: child),
     );
   }
 }

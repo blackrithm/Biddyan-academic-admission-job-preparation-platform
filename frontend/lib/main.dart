@@ -5,17 +5,17 @@ import 'core/router.dart';
 import 'core/theme.dart';
 
 void main() {
-  runApp(const ProviderScope(child: BiddyanApp()));
+  runApp(const ProviderScope(child: BidwaanApp()));
 }
 
 /// Root application widget — wires the global theme to the GoRouter config.
-class BiddyanApp extends StatelessWidget {
-  const BiddyanApp({super.key});
+class BidwaanApp extends StatelessWidget {
+  const BidwaanApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'বিদ্বান',
+      title: 'Bidwaan',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
